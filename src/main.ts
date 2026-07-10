@@ -39,11 +39,30 @@ const getTargetChannel = (channelId: Snowflake): TranslationTarget => {
   throw new NotTargetChannel(channelId);
 };
 
-const translate = async (message: string, dir: TranslationDirection) => {
-  // just reverses message
-  const res = [...message].reverse().join("");
+const translate = async (message: string, _dir: TranslationDirection) => {
+  // awaits the response of mock server
+  const response = await fetch("http://127.0.0.1:8080/translate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", },
+    body: JSON.stringify({ message, }),
+  });
 
-  return `[Direction: ${dir}] ${res}`;
+  if (!response.ok) {
+    throw new Error(`Mock server request failed: ${response.status}`);
+  }
+
+  const body: unknown = await response.json();
+
+  if (
+    typeof body !== "object" ||
+    body === null ||
+    !("translatedText" in body) ||
+    typeof body.translatedText !== "string"
+  ) {
+    throw new Error("Mock server returned an invalid response");
+  }
+
+  return body.translatedText;
 }
 
 const client: Client = new Client({
