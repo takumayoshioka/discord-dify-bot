@@ -15,7 +15,7 @@
   },
   "scripts": {
     "compile": "tsc -p .",
-    "dev": "node --env-file=.env.dev build/main.js",
-    "start": "node build/main.js"
+    "dev": "node --env-file=.env.dev dist/main.js",
+    "start": "node dist/main.js"
   }
 }

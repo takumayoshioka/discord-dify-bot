@@ -8,6 +8,12 @@ import {
 import { env } from "./env.js";
 import config from '../config.json' with { type: 'json' };
 
+type TranslationDirection = "ja-to-en" | "en-to-ja";
+type TranslationTarget = {
+  channelId: Snowflake;
+  direction: TranslationDirection;
+}
+
 // each dictionary relates two channels 
 // whose all messages should be translated and 
 // sent to the opposite channel
@@ -22,18 +28,23 @@ class NotTargetChannel extends Error {
 }
 
 // returns the translation target channel if it exists
-const getTargetChannel = (channelId: Snowflake) => {
+const getTargetChannel = (channelId: Snowflake): TranslationTarget => {
   for (const { ja: idA, en: idB } of channelTable) {
     if (idA === channelId) {
-      return idB;
+      return { channelId: idB, direction: "ja-to-en" };
     } else if (idB === channelId) {
-      return idA;
-    } else {
-      continue;
+      return { channelId: idA, direction: "en-to-ja" };
     }
   }
   throw new NotTargetChannel(channelId);
 };
+
+const translate = async (message: string, dir: TranslationDirection) => {
+  // just reverses message
+  const res = [...message].reverse().join("");
+
+  return `[Direction: ${dir}] ${res}`;
+}
 
 const client: Client = new Client({
   intents: [
@@ -48,22 +59,22 @@ client.once(Events.ClientReady, c => {
   console.log(`Ready! Logged in as ${c.user.tag}`);
 });
 
+// translation event handling
 client.on(Events.MessageCreate, async (message) => {
   if (message.author.bot) { return; }
 
   try {
-    const targetChannelId = getTargetChannel(message.channelId);
-    const targetChannel = await client.channels.fetch(targetChannelId);
-    if (targetChannel?.isSendable()) {
-      // sends a reversed message to the target channel
-      await targetChannel?.send(message.content.split("").reverse().join(""));
-    }
+    const target = getTargetChannel(message.channelId);
+    const targetChannel = await client.channels.fetch(target.channelId);
+
+    // if targetChannel is not sendable, just returns
+    if (!targetChannel?.isSendable()) { return; }
+
+    const translatedRes = await translate(message.content, target.direction);
+    await targetChannel.send(translatedRes);
   } catch (err) {
-    if (err instanceof NotTargetChannel) {
-      return;
-    } else {
-      console.log("Unknown error: ", err);
-    }
+    if (err instanceof NotTargetChannel) { return; }
+    console.error("Failed to translate or forward message: ", err);
   }
 })
 
