@@ -2,6 +2,9 @@ import {
   Client,
   Events,
   GatewayIntentBits,
+  TextChannel,
+  Webhook,
+  type Channel,
   type Snowflake
 } from 'discord.js';
 
@@ -39,6 +42,10 @@ const getTargetChannel = (channelId: Snowflake): TranslationTarget => {
   throw new NotTargetChannel(channelId);
 };
 
+const isTextChannel = (channel: Channel): channel is TextChannel => {
+  return channel instanceof TextChannel;
+}
+
 const translate = async (message: string, _dir: TranslationDirection) => {
   // awaits the response of mock server
   const response = await fetch("http://127.0.0.1:8080/translate", {
@@ -69,9 +76,35 @@ const client: Client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildWebhooks
   ]
 });
+
+const mapWebhooks = new Map<Snowflake, Webhook>();
+
+const BOT_WEBHOOK_NAME: string = "Webhook: Translator Bot";
+
+const getWebhook = async (channel: TextChannel) => {
+  const webhook = mapWebhooks.get(channel.id) ??
+    await generateWebhook(channel);
+
+  return webhook;
+}
+
+const generateWebhook = async (channel: TextChannel) => {
+  const webhooks = await channel.fetchWebhooks();
+
+  const webhook = webhooks?.find((v) =>
+    v.isUserCreated() &&
+    v.owner.id === channel.client.user.id &&
+    v.name === BOT_WEBHOOK_NAME
+  ) ??
+    await channel.createWebhook({ name: BOT_WEBHOOK_NAME });
+
+  mapWebhooks.set(channel.id, webhook);
+  return webhook;
+}
 
 // login message
 client.once(Events.ClientReady, c => {
@@ -79,18 +112,36 @@ client.once(Events.ClientReady, c => {
 });
 
 // translation event handling
+// only for TextChannel
 client.on(Events.MessageCreate, async (message) => {
-  if (message.author.bot) { return; }
+  // ignore messages from bot or post through webhook 
+  if (message.author.bot || message.webhookId) { return; }
 
   try {
+    // get the target channel to which this bot sends a translation result
     const target = getTargetChannel(message.channelId);
     const targetChannel = await client.channels.fetch(target.channelId);
 
-    // if targetChannel is not sendable, just returns
-    if (!targetChannel?.isSendable()) { return; }
+    // reject non-TextChannel
+    if (!isTextChannel(targetChannel!)) { return; }
 
+    // get translation result
     const translatedRes = await translate(message.content, target.direction);
-    await targetChannel.send(translatedRes);
+
+    // sending with copying author
+    const nickname =
+      message.member?.displayName ??
+      message.author.displayName;
+    const avatar =
+      message.member?.displayAvatarURL() ??
+      message.author.displayAvatarURL();
+    const webhook = await getWebhook(targetChannel);
+
+    await webhook.send({
+      content: translatedRes,
+      username: nickname,
+      avatarURL: avatar,
+    })
   } catch (err) {
     if (err instanceof NotTargetChannel) { return; }
     console.error("Failed to translate or forward message: ", err);

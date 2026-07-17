@@ -15,6 +15,7 @@
   },
   "scripts": {
     "compile": "tsc -p .",
+    "predev": "npm run compile",
     "dev": "node --env-file=.env.dev dist/main.js",
     "start": "node dist/main.js"
   }
