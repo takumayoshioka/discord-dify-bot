@@ -9,7 +9,9 @@ import {
 } from 'discord.js';
 
 import { env } from "./env.js";
+import "./jsonFormat.js";
 import config from '../config.json' with { type: 'json' };
+import { createTranslationRequest, parseTranslationResponse } from './jsonFormat.js';
 
 type TranslationDirection = "ja-to-en" | "en-to-ja";
 type TranslationTarget = {
@@ -51,25 +53,20 @@ const translate = async (message: string, _dir: TranslationDirection) => {
   const response = await fetch("http://127.0.0.1:8080/translate", {
     method: "POST",
     headers: { "Content-Type": "application/json", },
-    body: JSON.stringify({ message, }),
+    body: JSON.stringify(createTranslationRequest(message)),
   });
 
   if (!response.ok) {
     throw new Error(`Mock server request failed: ${response.status}`);
   }
 
-  const body: unknown = await response.json();
-
-  if (
-    typeof body !== "object" ||
-    body === null ||
-    !("translatedText" in body) ||
-    typeof body.translatedText !== "string"
-  ) {
-    throw new Error("Mock server returned an invalid response");
+  const rawBody = await response.text();
+  try {
+    const body = parseTranslationResponse(rawBody);
+    return body.data.outputs.message;
+  } catch (err) {
+    throw new Error(`Invalid response: \n${err}`);
   }
-
-  return body.translatedText;
 }
 
 const client: Client = new Client({

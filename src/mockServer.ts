@@ -1,4 +1,6 @@
 import { createServer } from "http";
+import "./jsonFormat.js";
+import { createTranslationResponse, parseTranslationRequest } from "./jsonFormat.js";
 
 const host = "127.0.0.1";
 const port = 8080;
@@ -26,34 +28,27 @@ const server = createServer(async (request, response) => {
   }
 
   const rawBody = Buffer.concat(chunks).toString("utf-8");
-  const body: unknown = JSON.parse(rawBody);
 
-  if (
-    typeof body !== "object" ||
-    body === null ||
-    !("message" in body) ||
-    typeof body.message !== "string"
-  ) {
+  try {
+    const body = parseTranslationRequest(rawBody);
+    const translatedText = [...body.inputs.message].reverse().join("");
+
+    response.writeHead(200, {
+      "Content-Type": "application/json; charset=utf-8",
+    });
+
+    response.end(JSON.stringify(
+      createTranslationResponse(translatedText)
+    ));
+  } catch (err) {
     response.writeHead(400, {
       "Content-Type": "application/json; charset=utf-8",
     });
 
     response.end(JSON.stringify({
-      error: "Invalid request",
+      error: `Invalid request: \n${err}`,
     }));
-
-    return;
   }
-
-  const translatedText = [...body.message].reverse().join("");
-
-  response.writeHead(200, {
-    "Content-Type": "application/json; charset=utf-8",
-  });
-
-  response.end(JSON.stringify({
-    translatedText
-  }));
 })
 
 server.listen(port, host, () => {
