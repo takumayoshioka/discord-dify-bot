@@ -2,6 +2,7 @@ import {
   Client,
   Events,
   GatewayIntentBits,
+  PermissionFlagsBits,
   TextChannel,
   Webhook,
   type Channel,
@@ -104,8 +105,22 @@ const generateWebhook = async (channel: TextChannel) => {
 }
 
 // login message
-client.once(Events.ClientReady, c => {
-  console.log(`Ready! Logged in as ${c.user.tag}`);
+client.once(Events.ClientReady, async (client) => {
+  // check bot permission
+  const isPermission = client.guilds.cache.reduce((acc, guild) => {
+    const botMember = guild.members.me;
+    if (!botMember) { return false; }
+
+    return acc
+      && botMember.permissions.has(PermissionFlagsBits.ManageWebhooks);
+  }, true);
+
+  if (isPermission) {
+    console.log(`Ready! Logged in as ${client.user.tag}`);
+  } else {
+    console.log(`Ready! Logged in as ${client.user.tag}`);
+    await client.destroy()
+  }
 });
 
 // translation event handling
