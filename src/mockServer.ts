@@ -1,18 +1,21 @@
 import { createServer } from "http";
 import "./jsonFormat.js";
 import { createTranslationResponse, parseTranslationRequest } from "./jsonFormat.js";
+import { getWorkflowURL } from "./translationURL.js";
 
-const host = "127.0.0.1";
-const port = 8080;
+const requestURL = getWorkflowURL();
+const host = requestURL.hostname;
+const port = Number(requestURL.port);
 
 const server = createServer(async (request, response) => {
   if (
     request.method !== "POST" ||
-    request.url !== "/translate"
+    request.url !== requestURL.pathname
   ) {
-    response.writeHead(404, {
-      "Content-Type": "application/json; charset=utf-8"
-    });
+    response.writeHead(404,
+      {
+        "Content-Type": "application/json; charset=utf-8"
+      });
 
     response.end(JSON.stringify({
       error: "Not found",

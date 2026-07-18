@@ -32,6 +32,10 @@
       "type": "node",
       "request": "launch",
       "program": "${workspaceFolder}/dist/mockServer.js",
+      "cwd": "${workspaceFolder}",
+      "runtimeArgs": [
+        "--env-file=.env.dev"
+      ],
       "preLaunchTask": "npm: compile",
       "sourceMaps": true,
       "outFiles": [

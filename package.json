@@ -18,7 +18,7 @@
     "predev": "npm run compile",
     "dev": "node --env-file=.env.dev dist/main.js",
     "premock": "npm run compile",
-    "mock": "node dist/mockServer.js",
+    "mock": "node --env-file=.env.dev dist/mockServer.js",
     "start": "node dist/main.js"
   }
 }

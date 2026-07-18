@@ -13,6 +13,7 @@ import { env } from "./env.js";
 import "./jsonFormat.js";
 import config from '../config.json' with { type: 'json' };
 import { createTranslationRequest, parseTranslationResponse } from './jsonFormat.js';
+import { getWorkflowURL, createTranslationRequestHeader } from './translationURL.js';
 
 type TranslationDirection = "ja-to-en" | "en-to-ja";
 type TranslationTarget = {
@@ -51,9 +52,9 @@ const isTextChannel = (channel: Channel): channel is TextChannel => {
 
 const translate = async (message: string, _dir: TranslationDirection) => {
   // awaits the response of mock server
-  const response = await fetch("http://127.0.0.1:8080/translate", {
+  const response = await fetch(getWorkflowURL(), {
     method: "POST",
-    headers: { "Content-Type": "application/json", },
+    headers: createTranslationRequestHeader(),
     body: JSON.stringify(createTranslationRequest(message)),
   });
 
