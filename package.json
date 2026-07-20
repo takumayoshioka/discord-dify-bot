@@ -11,7 +11,8 @@
   },
   "devDependencies": {
     "@types/node": "^26.1.0",
-    "ts-node": "^10.9.2"
+    "ts-node": "^10.9.2",
+    "vitest": "^4.1.10"
   },
   "scripts": {
     "compile": "tsc -p .",
@@ -19,6 +20,7 @@
     "dev": "node --env-file=.env.dev dist/main.js",
     "premock": "npm run compile",
     "mock": "node --env-file=.env.dev dist/mockServer.js",
-    "start": "node dist/main.js"
+    "prestart": "npm run compile",
+    "start": "node --env-file=.env dist/main.js"
   }
 }
