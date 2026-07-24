@@ -2,19 +2,14 @@ import z from "zod";
 
 // required JSON format
 const jsonTranslationRequest = z.object({
-  inputs: z.object({
-    message: z.string()
-  }),
+  query: z.string(),
+  inputs: z.record(z.string(), z.unknown()),
   response_mode: z.string(),
-  user: z.string()
+  user: z.string().min(1)
 })
 
 const jsonTranslationResponse = z.object({
-  data: z.object({
-    outputs: z.object({
-      message: z.string()
-    })
-  }),
+  answer: z.string().min(1)
 })
 
 type JsonTranslationRequest = z.infer<typeof jsonTranslationRequest>;
@@ -23,9 +18,8 @@ type JsonTranslationResponse = z.infer<typeof jsonTranslationResponse>;
 export const createTranslationRequest = (message: string)
   : JsonTranslationRequest => {
   return {
-    inputs: {
-      message
-    },
+    query: message,
+    inputs: {},
     response_mode: "blocking",
     user: "discord-translator"
   }
@@ -34,12 +28,20 @@ export const createTranslationRequest = (message: string)
 export const createTranslationResponse = (message: string)
   : JsonTranslationResponse => {
   return {
-    data: {
-      outputs: {
-        message: message
-      }
-    },
+    answer: message,
   }
+}
+
+export const getTranslationRequestMessage = (
+  request: JsonTranslationRequest
+) => {
+  return request.query;
+}
+
+export const getTranslationResponseMessage = (
+  request: JsonTranslationResponse
+) => {
+  return request.answer;
 }
 
 export const parseTranslationRequest = (json: string)

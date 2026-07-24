@@ -1,6 +1,6 @@
 import { createServer } from "http";
 import "./jsonFormat.js";
-import { createTranslationResponse, parseTranslationRequest } from "./jsonFormat.js";
+import { createTranslationResponse, getTranslationRequestMessage, parseTranslationRequest } from "./jsonFormat.js";
 import { getWorkflowURL } from "./translationURL.js";
 
 const requestURL = getWorkflowURL();
@@ -34,7 +34,8 @@ const server = createServer(async (request, response) => {
 
   try {
     const body = parseTranslationRequest(rawBody);
-    const translatedText = [...body.inputs.message].reverse().join("");
+    const translatedText =
+      [...getTranslationRequestMessage(body)].reverse().join("");
 
     response.writeHead(200, {
       "Content-Type": "application/json; charset=utf-8",

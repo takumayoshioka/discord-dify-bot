@@ -1,6 +1,6 @@
 import { env } from "./env.js";
 
-const requestURL = "workflows/run";
+const requestURL = "chat-messages";
 
 export const getWorkflowURL = () => {
   return new URL(requestURL, `${env.BASE_URL}/`);

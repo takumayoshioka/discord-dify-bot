@@ -12,6 +12,7 @@ import {
 import config from '../config.json' with { type: 'json' };
 import {
   createTranslationRequest,
+  getTranslationResponseMessage,
   parseTranslationResponse
 } from './jsonFormat.js';
 import {
@@ -69,7 +70,7 @@ const translate = async (message: string, _dir: TranslationDirection) => {
   const rawBody = await response.text();
   try {
     const body = parseTranslationResponse(rawBody);
-    return body.data.outputs.message;
+    return getTranslationResponseMessage(body);
   } catch (err) {
     throw new Error(`Invalid response: \n${err}`);
   }
