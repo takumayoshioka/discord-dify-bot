@@ -12,3 +12,4 @@
 - Strict response order
 - Forum channel
 - Send image
+- Send a error report to a specific channel if this bot encounters an error

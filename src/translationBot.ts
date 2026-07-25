@@ -6,7 +6,7 @@ import {
   Webhook,
   type Channel,
   type OmitPartialGroupDMChannel,
-  type Snowflake
+  type Snowflake,
 } from 'discord.js';
 
 import config from '../config.json' with { type: 'json' };
@@ -160,6 +160,6 @@ export const botTransalte = (client: Client<boolean>) => async (
     })
   } catch (err) {
     if (err instanceof NotTargetChannel) { return; }
-    console.error("Failed to translate or forward message: ", err);
+    console.error("Failed to translate or forward message: \n", err);
   }
 }

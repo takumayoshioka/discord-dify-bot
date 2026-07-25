@@ -52,11 +52,13 @@ export const parseTranslationRequest = (json: string)
   } catch (err) {
     if (err instanceof SyntaxError) {
       throw new Error(
-        `Translation API request took invalid JSON.`
+        `Translation API request took invalid JSON.\n
+        ${json}`
       );
     } else if (err instanceof z.ZodError) {
       throw new Error(
-        `Translation API request does not match the expected format.`
+        `Translation API request does not match the expected format.\n
+        ${json}`
       );
     } else {
       throw err;
@@ -72,11 +74,13 @@ export const parseTranslationResponse = (json: string)
   } catch (err) {
     if (err instanceof SyntaxError) {
       throw new Error(
-        `Translation API response returned invalid JSON.`
+        `Translation API response returned invalid JSON.\n
+        ${json}`
       );
     } else if (err instanceof z.ZodError) {
       throw new Error(
-        `Translation API response does not match the expected format.`
+        `Translation API response does not match the expected format.\n
+        ${json}`
       );
     } else {
       throw err;
