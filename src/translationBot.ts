@@ -5,11 +5,11 @@ import {
   TextChannel,
   Webhook,
   type Channel,
+  type Interaction,
   type OmitPartialGroupDMChannel,
   type Snowflake,
 } from 'discord.js';
 
-import config from '../config.json' with { type: 'json' };
 import {
   createTranslationRequest,
   getTranslationResponseMessage,
@@ -19,18 +19,23 @@ import {
   getWorkflowURL,
   createTranslationRequestHeader
 } from './translationURL.js';
+import {
+  connectChannelPair,
+  disconnectChannelPair,
+  getChannelPairs,
+  initializeChannelTable
+} from './channelTable.js';
+import {
+  CONNECT_COMMAND_NAME,
+  DISCONNECT_COMMAND_NAME,
+  CONNECT_DISCONNECT_OPTION
+} from './commands.js';
 
 type TranslationDirection = "ja-to-en" | "en-to-ja";
 type TranslationTarget = {
   channelId: Snowflake;
   direction: TranslationDirection;
 }
-
-// each dictionary relates two channels 
-// whose all messages should be translated and 
-// sent to the opposite channel
-const channelTable: { ja: Snowflake, en: Snowflake }[] =
-  config.channel_table;
 
 // not a target channel of the translation
 class NotTargetChannel extends Error {
@@ -41,7 +46,7 @@ class NotTargetChannel extends Error {
 
 // returns the translation target channel if it exists
 const getTargetChannel = (channelId: Snowflake): TranslationTarget => {
-  for (const { ja: idA, en: idB } of channelTable) {
+  for (const { ja: idA, en: idB } of getChannelPairs()) {
     if (idA === channelId) {
       return { channelId: idB, direction: "ja-to-en" };
     } else if (idB === channelId) {
@@ -118,6 +123,7 @@ export const botLogin = async (client: Client<true>) => {
 
   if (isPermission) {
     console.log(`Ready! Logged in as ${client.user.tag}`);
+    await initializeChannelTable();
   } else {
     console.error(
       `User ${client.user.tag} does not have ManageWebhook permission`
@@ -161,5 +167,60 @@ export const botTransalte = (client: Client<boolean>) => async (
   } catch (err) {
     if (err instanceof NotTargetChannel) { return; }
     console.error("Failed to translate or forward message: \n", err);
+  }
+}
+
+// slash command interaction
+// TODO: refine messages for users
+export const botChatInteraction = async (interaction: Interaction) => {
+  if (!interaction.isChatInputCommand()) { return; }
+
+  switch (interaction.commandName) {
+    case CONNECT_COMMAND_NAME: {
+      const jaChannel = interaction.options.getChannel(
+        CONNECT_DISCONNECT_OPTION.ja
+      );
+      const enChannel = interaction.options.getChannel(
+        CONNECT_DISCONNECT_OPTION.en
+      );
+      if (!jaChannel || !enChannel) {
+        console.error("Invalid channel(s)");
+        return;
+      }
+      await interaction.deferReply();
+      const isConnected = await connectChannelPair(
+        { ja: jaChannel.id, en: enChannel.id }
+      );
+      await (isConnected)
+        ? interaction.editReply("Connected.")
+        : interaction.editReply("Connection failured.")
+      break;
+    }
+
+    case DISCONNECT_COMMAND_NAME: {
+      const jaChannel = interaction.options.getChannel(
+        CONNECT_DISCONNECT_OPTION.ja
+      );
+      const enChannel = interaction.options.getChannel(
+        CONNECT_DISCONNECT_OPTION.en
+      );
+      if (!jaChannel || !enChannel) {
+        console.error("Invalid channel(s)");
+        return;
+      }
+      await interaction.deferReply();
+      const isConnected = await disconnectChannelPair(
+        { ja: jaChannel.id, en: enChannel.id }
+      );
+      await (isConnected)
+        ? interaction.editReply("Disconnected.")
+        : interaction.editReply("Disconnection failured.")
+      break;
+    }
+
+    default: {
+      console.error("Invalid command");
+      return;
+    }
   }
 }

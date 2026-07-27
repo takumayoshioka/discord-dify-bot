@@ -4,6 +4,7 @@ const envSchema = z.object({
   APP_ENV: z.enum(["mock", "production"]),
 
   DISCORD_TOKEN: z.string().min(1),
+  DISCORD_APP_ID: z.string().min(1),
 
   BASE_URL: z.url().transform((s) => s.replace(/\$/, "")),
   DIFY_API_KEY: z.string().min(1).optional(),

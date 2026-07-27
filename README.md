@@ -9,6 +9,7 @@
 - Connect/Disconnect slash command
 - Add dictionary slash command
 - Role color, custom role icon, 
+- Translate a textmessage when someone reacts it by ja/en flag Emoji
 - Strict response order
 - Forum channel
 - Send image

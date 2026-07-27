@@ -1,3 +1,6 @@
+# data files
+channelTable.json
+
 # Logs
 logs
 *.log

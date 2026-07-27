@@ -3,38 +3,42 @@ import {
   ChannelType
 } from "discord.js";
 
+export const CONNECT_COMMAND_NAME = "connect";
+export const DISCONNECT_COMMAND_NAME = "disconnect";
+export const CONNECT_DISCONNECT_OPTION = { ja: "ja", en: "en" };
+
 // connect/disconnect command builder
-const connectCommand = new SlashCommandBuilder()
-  .setName("connect")
+export const connectCommand = new SlashCommandBuilder()
+  .setName(CONNECT_COMMAND_NAME)
   .setDescription("Connect ja/en channels")
   .addChannelOption((option) =>
     option
-      .setName("ja")
+      .setName(CONNECT_DISCONNECT_OPTION.ja)
       .setDescription("Japanese channel")
       .setRequired(true)
       .addChannelTypes(ChannelType.GuildText)
   )
   .addChannelOption((option) =>
     option
-      .setName("en")
+      .setName(CONNECT_DISCONNECT_OPTION.en)
       .setDescription("English channel")
       .setRequired(true)
       .addChannelTypes(ChannelType.GuildText)
   );
 
-const disconnectCommand = new SlashCommandBuilder()
-  .setName("disconnect")
+export const disconnectCommand = new SlashCommandBuilder()
+  .setName(DISCONNECT_COMMAND_NAME)
   .setDescription("Disconnect ja/en channels")
   .addChannelOption((option) =>
     option
-      .setName("ja")
+      .setName(CONNECT_DISCONNECT_OPTION.ja)
       .setDescription("Japanese channel")
       .setRequired(true)
       .addChannelTypes(ChannelType.GuildText)
   )
   .addChannelOption((option) =>
     option
-      .setName("en")
+      .setName(CONNECT_DISCONNECT_OPTION.en)
       .setDescription("English channel")
       .setRequired(true)
       .addChannelTypes(ChannelType.GuildText)

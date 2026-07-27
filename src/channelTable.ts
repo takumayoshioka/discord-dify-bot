@@ -18,20 +18,27 @@ type ChannelPair = Readonly<z.infer<typeof channelPairSchema>>;
 type ChannelPairs = Array<ChannelPair>;
 type ChannelTable = Readonly<z.infer<typeof channelTableSchema>>;
 
+const CHANNEL_TABLE_NAME = "channelTable.json";
+
 const readChannelTablePath = join(
-  process.cwd(), "config.json"
+  process.cwd(), CHANNEL_TABLE_NAME
 );
 
 const writeChannelTablePath = join(
-  process.cwd(), "config.json.tmp"
+  process.cwd(), [CHANNEL_TABLE_NAME, ".tmp"].join()
 )
 
 let channelPairs: ChannelPairs = [];
 
 const readChannelTable = async (): Promise<ChannelPairs> => {
-  const fileText = await readFile(readChannelTablePath, "utf8");
-  const channelTable = channelTableSchema.parse(JSON.parse(fileText));
-  return channelTable.channel_table;
+  try {
+    const fileText = await readFile(readChannelTablePath, "utf8");
+    const channelTable = channelTableSchema.parse(JSON.parse(fileText));
+    return channelTable.channel_table;
+  } catch (err) {
+    await writeChannelTable();
+    return channelPairs;
+  }
 }
 
 const existsOverlapChannelPair = (pair: ChannelPair): boolean => {
@@ -69,9 +76,19 @@ export const getChannelPairs = (): ChannelPairs => {
   return channelPairs;
 }
 
+export const clearChannelPairs = async (): Promise<void> => {
+  channelPairs = [];
+  await writeChannelTable();
+}
+
 // initialize internal state of channel pairs
 export const initializeChannelTable = async (): Promise<void> => {
-  channelPairs = (await readChannelTable());
+  try {
+    channelPairs = (await readChannelTable());
+  } catch (_err) {
+    channelPairs = [];
+    await writeChannelTable();
+  }
 }
 
 const writeChannelTable = async () => {
