@@ -9,11 +9,11 @@ import { env } from "./env.js";
 import {
   botLogin,
   botTransalte,
-  botChatInteraction,
 } from './translationBot.js';
 import {
   connectCommand,
-  disconnectCommand
+  disconnectCommand,
+  botChatInteraction
 } from './commands.js';
 
 const client: Client = new Client({

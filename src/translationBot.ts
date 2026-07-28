@@ -5,7 +5,6 @@ import {
   TextChannel,
   Webhook,
   type Channel,
-  type Interaction,
   type OmitPartialGroupDMChannel,
   type Snowflake,
 } from 'discord.js';
@@ -20,16 +19,9 @@ import {
   createTranslationRequestHeader
 } from './translationURL.js';
 import {
-  connectChannelPair,
-  disconnectChannelPair,
   getChannelPairs,
   initializeChannelTable
 } from './channelTable.js';
-import {
-  CONNECT_COMMAND_NAME,
-  DISCONNECT_COMMAND_NAME,
-  CONNECT_DISCONNECT_OPTION
-} from './commands.js';
 
 type TranslationDirection = "ja-to-en" | "en-to-ja";
 type TranslationTarget = {
@@ -60,8 +52,8 @@ const isTextChannel = (channel: Channel): channel is TextChannel => {
   return channel instanceof TextChannel;
 }
 
+// translation body
 const translate = async (message: string, _dir: TranslationDirection) => {
-  // awaits the response of mock server
   const response = await fetch(getWorkflowURL(), {
     method: "POST",
     headers: createTranslationRequestHeader(),
@@ -81,8 +73,8 @@ const translate = async (message: string, _dir: TranslationDirection) => {
   }
 }
 
+// webhooks cache
 const mapWebhooks = new Map<Snowflake, Webhook>();
-
 const botWebhookName: string = "Webhook: Translator Bot";
 
 const getWebhook = async (channel: TextChannel) => {
@@ -167,60 +159,5 @@ export const botTransalte = (client: Client<boolean>) => async (
   } catch (err) {
     if (err instanceof NotTargetChannel) { return; }
     console.error("Failed to translate or forward message: \n", err);
-  }
-}
-
-// slash command interaction
-// TODO: refine messages for users
-export const botChatInteraction = async (interaction: Interaction) => {
-  if (!interaction.isChatInputCommand()) { return; }
-
-  switch (interaction.commandName) {
-    case CONNECT_COMMAND_NAME: {
-      const jaChannel = interaction.options.getChannel(
-        CONNECT_DISCONNECT_OPTION.ja
-      );
-      const enChannel = interaction.options.getChannel(
-        CONNECT_DISCONNECT_OPTION.en
-      );
-      if (!jaChannel || !enChannel) {
-        console.error("Invalid channel(s)");
-        return;
-      }
-      await interaction.deferReply();
-      const isConnected = await connectChannelPair(
-        { ja: jaChannel.id, en: enChannel.id }
-      );
-      await (isConnected)
-        ? interaction.editReply("Connected.")
-        : interaction.editReply("Connection failured.")
-      break;
-    }
-
-    case DISCONNECT_COMMAND_NAME: {
-      const jaChannel = interaction.options.getChannel(
-        CONNECT_DISCONNECT_OPTION.ja
-      );
-      const enChannel = interaction.options.getChannel(
-        CONNECT_DISCONNECT_OPTION.en
-      );
-      if (!jaChannel || !enChannel) {
-        console.error("Invalid channel(s)");
-        return;
-      }
-      await interaction.deferReply();
-      const isConnected = await disconnectChannelPair(
-        { ja: jaChannel.id, en: enChannel.id }
-      );
-      await (isConnected)
-        ? interaction.editReply("Disconnected.")
-        : interaction.editReply("Disconnection failured.")
-      break;
-    }
-
-    default: {
-      console.error("Invalid command");
-      return;
-    }
   }
 }
