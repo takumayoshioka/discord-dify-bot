@@ -125,7 +125,7 @@ export const botLogin = async (client: Client<true>) => {
 }
 
 // translate messages sent only in TextChannel
-export const botTransalte = (client: Client<boolean>) => async (
+export const botTranslateSentMessage = (client: Client<boolean>) => async (
   message: OmitPartialGroupDMChannel<Message<boolean>>
 ) => {
   // ignore messages from bot or post through webhook 

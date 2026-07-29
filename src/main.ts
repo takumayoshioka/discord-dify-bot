@@ -8,13 +8,13 @@ import {
 import { env } from "./env.js";
 import {
   botLogin,
-  botTransalte,
+  botTranslateSentMessage,
 } from './translationBot.js';
 import {
   connectCommand,
   disconnectCommand,
-  botChatInteraction
-} from './commands.js';
+  botConnectionCommandsInteraction
+} from './connectionCommands.js';
 
 const client: Client = new Client({
   intents: [
@@ -27,8 +27,8 @@ const client: Client = new Client({
 
 // login message
 client.once(Events.ClientReady, botLogin);
-client.on(Events.MessageCreate, botTransalte(client));
-client.on(Events.InteractionCreate, botChatInteraction);
+client.on(Events.MessageCreate, botTranslateSentMessage(client));
+client.on(Events.InteractionCreate, botConnectionCommandsInteraction);
 
 // login
 await client.login(env.DISCORD_TOKEN);

@@ -51,7 +51,9 @@ export const disconnectCommand = new SlashCommandBuilder()
 
 // slash command interaction
 // TODO: refine messages for users
-export const botChatInteraction = async (interaction: Interaction) => {
+export const botConnectionCommandsInteraction = async (
+  interaction: Interaction
+) => {
   if (!interaction.isChatInputCommand()) { return; }
 
   switch (interaction.commandName) {
