@@ -8,7 +8,9 @@ import {
 import { env } from "./env.js";
 import {
   botLogin,
+  botTranslateReplybyCommand,
   botTranslateSentMessage,
+  translateMessageCommand,
 } from './translationBot.js';
 import {
   connectCommand,
@@ -28,6 +30,7 @@ const client: Client = new Client({
 // login message
 client.once(Events.ClientReady, botLogin);
 client.on(Events.MessageCreate, botTranslateSentMessage(client));
+client.on(Events.InteractionCreate, botTranslateReplybyCommand);
 client.on(Events.InteractionCreate, botConnectionCommandsInteraction);
 
 // login
@@ -37,6 +40,10 @@ await client.login(env.DISCORD_TOKEN);
 await client.rest.put(
   Routes.applicationCommands(env.DISCORD_APP_ID),
   {
-    body: [connectCommand.toJSON(), disconnectCommand.toJSON()]
+    body: [
+      translateMessageCommand.toJSON(),
+      connectCommand.toJSON(),
+      disconnectCommand.toJSON(),
+    ]
   }
 )

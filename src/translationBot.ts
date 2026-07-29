@@ -1,10 +1,14 @@
 import {
+  ApplicationCommandType,
   Client,
+  ContextMenuCommandBuilder,
   Message,
+  MessageFlags,
   PermissionFlagsBits,
   TextChannel,
   Webhook,
   type Channel,
+  type Interaction,
   type OmitPartialGroupDMChannel,
   type Snowflake,
 } from 'discord.js';
@@ -160,4 +164,34 @@ export const botTranslateSentMessage = (client: Client<boolean>) => async (
     if (err instanceof NotTargetChannel) { return; }
     console.error("Failed to translate or forward message: \n", err);
   }
+}
+
+// build a translate command in context menu
+export const translateMessageCommand = new ContextMenuCommandBuilder()
+  .setName("translate")
+  .setType(ApplicationCommandType.Message);
+
+// translate messages if it selected by context menu
+export const botTranslateReplybyCommand = async (
+  interaction: Interaction
+) => {
+  if (!interaction.isMessageContextMenuCommand()) { return; }
+
+  // const commandName = interaction.commandName;
+  // const dir: TranslationDirection | null =
+  //   (commandName === "ja-to-en") ? "ja-to-en"
+  //     : (commandName === "en-to-ja") ? "en-to-ja" : null;
+  // if (!dir) { return; }
+
+  // direction does not used 
+  const dir: TranslationDirection = "ja-to-en";
+
+  await interaction.deferReply({
+    flags: MessageFlags.Ephemeral
+  });
+
+  const message = interaction.targetMessage;
+  const translatedRes = await translate(message.content, dir);
+
+  await interaction.editReply(translatedRes);
 }
