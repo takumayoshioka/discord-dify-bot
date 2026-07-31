@@ -4,9 +4,10 @@ import {
   type Interaction,
 } from "discord.js";
 import {
-  connectChannelPair,
-  disconnectChannelPair,
-} from './channelTable.js';
+  channelDB,
+  ChannelConnectionFailure,
+  ChannelDisconnectionFailure
+} from "./db/dbManager.js";
 
 export const CONNECT_COMMAND_NAME = "connect";
 export const DISCONNECT_COMMAND_NAME = "disconnect";
@@ -69,12 +70,16 @@ export const botConnectionCommandsInteraction = async (
         return;
       }
       await interaction.deferReply();
-      const isConnected = await connectChannelPair(
-        { ja: jaChannel.id, en: enChannel.id }
-      );
-      await (isConnected)
-        ? interaction.editReply("Connected.")
-        : interaction.editReply("Connection failured.")
+      try {
+        await channelDB.enqueue(jaChannel.id, enChannel.id);
+        interaction.editReply("Connected.")
+      } catch (err) {
+        if (err instanceof ChannelConnectionFailure) {
+          interaction.editReply("Connection failured.")
+        } else {
+          throw err
+        }
+      }
       break;
     }
 
@@ -90,12 +95,16 @@ export const botConnectionCommandsInteraction = async (
         return;
       }
       await interaction.deferReply();
-      const isConnected = await disconnectChannelPair(
-        { ja: jaChannel.id, en: enChannel.id }
-      );
-      await (isConnected)
-        ? interaction.editReply("Disconnected.")
-        : interaction.editReply("Disconnection failured.")
+      try {
+        await channelDB.dequeue(jaChannel.id, enChannel.id);
+        interaction.editReply("Disconnected.")
+      } catch (err) {
+        if (err instanceof ChannelDisconnectionFailure) {
+          interaction.editReply("Disconnection failured.")
+        } else {
+          throw err
+        }
+      }
       break;
     }
 

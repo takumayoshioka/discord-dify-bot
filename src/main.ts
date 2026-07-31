@@ -8,14 +8,14 @@ import {
 import { env } from "./env.js";
 import {
   botLogin,
-  botTranslateReplybyCommand,
   botTranslateSentMessage,
   translateMessageCommand,
+  botTranslateReplybyCommand,
 } from './translationBot.js';
 import {
   connectCommand,
   disconnectCommand,
-  botConnectionCommandsInteraction
+  botConnectionCommandsInteraction,
 } from './connectionCommands.js';
 
 const client: Client = new Client({

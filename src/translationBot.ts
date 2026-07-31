@@ -11,58 +11,23 @@ import {
   type Interaction,
   type OmitPartialGroupDMChannel,
   type Snowflake,
-} from 'discord.js';
+} from "discord.js";
 
 import {
   createTranslationRequest,
   getTranslationResponseMessage,
   parseTranslationResponse
-} from './jsonFormat.js';
+} from "./jsonFormat.js";
 import {
   getWorkflowURL,
   createTranslationRequestHeader
-} from './translationURL.js';
+} from "./translationURL.js";
 import {
-  getChannelPairs,
-  initializeChannelTable
-} from './channelTable.js';
-import {
-  type MsgDB,
-  openMsgDB,
-  initMsgDB,
-  enqueueMsgDB,
-  setTranslatedContentMsgDB,
-  getTranslatedContentMsgDB,
-  deleteTranslatedContentMsgDB
-} from "./messageDB.js"
-
-// Message Database
-let msgDB: MsgDB;
-
-type TranslationDirection = "ja-to-en" | "en-to-ja";
-type TranslationTarget = {
-  channelId: Snowflake;
-  direction: TranslationDirection;
-}
-
-// not a target channel of the translation
-class NotTargetChannel extends Error {
-  constructor(message?: string) {
-    super(message);
-  }
-}
-
-// returns the translation target channel if it exists
-const getTargetChannel = (channelId: Snowflake): TranslationTarget => {
-  for (const { ja: idA, en: idB } of getChannelPairs()) {
-    if (idA === channelId) {
-      return { channelId: idB, direction: "ja-to-en" };
-    } else if (idB === channelId) {
-      return { channelId: idA, direction: "en-to-ja" };
-    }
-  }
-  throw new NotTargetChannel(channelId);
-};
+  channelDB,
+  messageDB,
+  type TranslationDirection,
+  NotTargetChannel
+} from "./db/dbManager.js"
 
 const isTextChannel = (channel: Channel): channel is TextChannel => {
   return channel instanceof TextChannel;
@@ -120,7 +85,7 @@ const waitingChannelIDs = new Set<string>();
 // send translated messages from message database
 // waitingChannelIDs must have targetChannel.id in this function
 const sendTranslatedContent = async (targetChannel: TextChannel) => {
-  const row = await getTranslatedContentMsgDB(msgDB, targetChannel.id);
+  const row = await messageDB.getTranslatedContent(targetChannel.id);
 
   if (!row) {
     waitingChannelIDs.delete(targetChannel.id);
@@ -138,7 +103,7 @@ const sendTranslatedContent = async (targetChannel: TextChannel) => {
     avatarURL: row.avatar_url,
   })
 
-  await deleteTranslatedContentMsgDB(msgDB, row.id);
+  await messageDB.dequeue(row.id);
   await sendTranslatedContent(targetChannel);
 }
 
@@ -159,9 +124,9 @@ export const botLogin = async (client: Client<true>) => {
 
   if (isPermission) {
     console.log(`Ready! Logged in as ${client.user.tag}`);
-    await initializeChannelTable();
-    msgDB = await openMsgDB();
-    await initMsgDB(msgDB);
+    // await initializeChannelTable();
+    await channelDB.init();
+    await messageDB.init();
   } else {
     console.error(
       `User ${client.user.tag} does not have ManageWebhook permission`
@@ -179,8 +144,8 @@ export const botTranslateSentMessage = (client: Client<boolean>) => async (
 
   try {
     // get the target channel to which this bot sends a translation result
-    const target = getTargetChannel(message.channelId);
-    const targetChannel = await client.channels.fetch(target.channelId);
+    const target = await channelDB.getTargetChannel(message.channelId);
+    const targetChannel = await client.channels.fetch(target.channelID);
 
     // reject non-TextChannel
     if (!isTextChannel(targetChannel!)) { return; }
@@ -193,9 +158,8 @@ export const botTranslateSentMessage = (client: Client<boolean>) => async (
       message.member?.displayAvatarURL() ??
       message.author.displayAvatarURL();
 
-    const rowID = await enqueueMsgDB(
-      msgDB,
-      target.channelId,
+    const rowID = await messageDB.enqueue(
+      target.channelID,
       message.content,
       displayName,
       avatarURL
@@ -206,7 +170,7 @@ export const botTranslateSentMessage = (client: Client<boolean>) => async (
     // get translation result
     const translatedRes = await translate(message.content, target.direction);
 
-    await setTranslatedContentMsgDB(msgDB, rowID, translatedRes);
+    await messageDB.setTranslatedContent(rowID, translatedRes);
     if (!waitingChannelIDs.has(targetChannel.id)) {
       waitingChannelIDs.add(targetChannel.id);
       await sendTranslatedContent(targetChannel);
