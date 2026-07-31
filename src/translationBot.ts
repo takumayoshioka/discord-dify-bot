@@ -26,6 +26,18 @@ import {
   getChannelPairs,
   initializeChannelTable
 } from './channelTable.js';
+import {
+  type MsgDB,
+  openMsgDB,
+  initMsgDB,
+  enqueueMsgDB,
+  setTranslatedContentMsgDB,
+  getTranslatedContentMsgDB,
+  deleteTranslatedContentMsgDB
+} from "./messageDB.js"
+
+// Message Database
+let msgDB: MsgDB;
 
 type TranslationDirection = "ja-to-en" | "en-to-ja";
 type TranslationTarget = {
@@ -56,7 +68,7 @@ const isTextChannel = (channel: Channel): channel is TextChannel => {
   return channel instanceof TextChannel;
 }
 
-// translation body
+// translation request
 const translate = async (message: string, _dir: TranslationDirection) => {
   const response = await fetch(getWorkflowURL(), {
     method: "POST",
@@ -102,6 +114,34 @@ const generateWebhook = async (channel: TextChannel) => {
   return webhook;
 }
 
+// collects channel IDs that has non-sent messages 
+const waitingChannelIDs = new Set<string>();
+
+// send translated messages from message database
+// waitingChannelIDs must have targetChannel.id in this function
+const sendTranslatedContent = async (targetChannel: TextChannel) => {
+  const row = await getTranslatedContentMsgDB(msgDB, targetChannel.id);
+
+  if (!row) {
+    waitingChannelIDs.delete(targetChannel.id);
+    return;
+  }
+  if (!(row.translated_content)) {
+    waitingChannelIDs.delete(targetChannel.id);
+    return;
+  }
+
+  const webhook = await getWebhook(targetChannel);
+  await webhook.send({
+    content: row.translated_content,
+    username: row.display_name,
+    avatarURL: row.avatar_url,
+  })
+
+  await deleteTranslatedContentMsgDB(msgDB, row.id);
+  await sendTranslatedContent(targetChannel);
+}
+
 // login 
 export const botLogin = async (client: Client<true>) => {
   // check bot permission
@@ -120,6 +160,8 @@ export const botLogin = async (client: Client<true>) => {
   if (isPermission) {
     console.log(`Ready! Logged in as ${client.user.tag}`);
     await initializeChannelTable();
+    msgDB = await openMsgDB();
+    await initMsgDB(msgDB);
   } else {
     console.error(
       `User ${client.user.tag} does not have ManageWebhook permission`
@@ -143,28 +185,39 @@ export const botTranslateSentMessage = (client: Client<boolean>) => async (
     // reject non-TextChannel
     if (!isTextChannel(targetChannel!)) { return; }
 
+    // sending with copying author
+    const displayName =
+      message.member?.displayName ??
+      message.author.displayName;
+    const avatarURL =
+      message.member?.displayAvatarURL() ??
+      message.author.displayAvatarURL();
+
+    const rowID = await enqueueMsgDB(
+      msgDB,
+      target.channelId,
+      message.content,
+      displayName,
+      avatarURL
+    );
+
+    if (!rowID) { return; }
+
     // get translation result
     const translatedRes = await translate(message.content, target.direction);
 
-    // sending with copying author
-    const nickname =
-      message.member?.displayName ??
-      message.author.displayName;
-    const avatar =
-      message.member?.displayAvatarURL() ??
-      message.author.displayAvatarURL();
-    const webhook = await getWebhook(targetChannel);
-
-    await webhook.send({
-      content: translatedRes,
-      username: nickname,
-      avatarURL: avatar,
-    })
+    await setTranslatedContentMsgDB(msgDB, rowID, translatedRes);
+    if (!waitingChannelIDs.has(targetChannel.id)) {
+      waitingChannelIDs.add(targetChannel.id);
+      await sendTranslatedContent(targetChannel);
+    }
   } catch (err) {
     if (err instanceof NotTargetChannel) { return; }
     console.error("Failed to translate or forward message: \n", err);
   }
 }
+
+// ------------------------------------------------------------
 
 // build a translate command in context menu
 export const translateMessageCommand = new ContextMenuCommandBuilder()

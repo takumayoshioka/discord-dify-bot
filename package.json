@@ -1,8 +1,10 @@
 {
   "type": "module",
   "dependencies": {
+    "better-sqlite3": "^13.0.2",
     "discord.js": "^14.26.4",
     "dotenv": "^17.4.2",
+    "kysely": "^0.29.4",
     "typescript": "^6.0.3",
     "zod": "^4.4.3"
   },
@@ -10,13 +12,17 @@
     "undici": "6.27.0"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^26.1.0",
     "ts-node": "^10.9.2",
     "vitest": "^4.1.10"
   },
+  "allowScripts": {
+    "better-sqlite3@13.0.2": true
+  },
   "scripts": {
     "compile": "tsc -p .",
-    "predev": "rm channelTable.json || npm run compile",
+    "predev": "rm -f channelTable.json && rm -f db/* && npm run compile",
     "dev": "node --env-file=.env.dev dist/main.js",
     "premock": "npm run compile",
     "mock": "node --env-file=.env.dev dist/mockServer.js",
