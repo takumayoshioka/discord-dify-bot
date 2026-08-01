@@ -12,10 +12,14 @@ import {
   type OmitPartialGroupDMChannel,
   type Snowflake,
 } from "discord.js";
+import {
+  find as linkifyFind
+} from "linkifyjs";
 
 import {
   createTranslationRequest,
   getTranslationResponseMessage,
+  parseAttachmentFiles,
   parseTranslationResponse
 } from "./jsonFormat.js";
 import {
@@ -31,6 +35,10 @@ import {
 
 const isTextChannel = (channel: Channel): channel is TextChannel => {
   return channel instanceof TextChannel;
+}
+
+const hasURL = (message: string) => {
+  return linkifyFind(message, "url").length > 0;
 }
 
 // translation request
@@ -99,6 +107,7 @@ const sendTranslatedContent = async (targetChannel: TextChannel) => {
   const webhook = await getWebhook(targetChannel);
   await webhook.send({
     content: row.translated_content,
+    files: parseAttachmentFiles(row.attachment_json),
     username: row.display_name,
     avatarURL: row.avatar_url,
   })
@@ -150,7 +159,14 @@ export const botTranslateSentMessage = (client: Client<boolean>) => async (
     // reject non-TextChannel
     if (!isTextChannel(targetChannel!)) { return; }
 
+    const attachedFiles = [...message.attachments.values()]
+      .map((attachment) => ({
+        attachment: attachment.url,
+        name: attachment.name
+      }));
+
     // sending with copying author
+    const content = message.content;
     const displayName =
       message.member?.displayName ??
       message.author.displayName;
@@ -160,7 +176,8 @@ export const botTranslateSentMessage = (client: Client<boolean>) => async (
 
     const rowID = await messageDB.enqueue(
       target.channelID,
-      message.content,
+      content,
+      JSON.stringify(attachedFiles),
       displayName,
       avatarURL
     );
@@ -168,7 +185,9 @@ export const botTranslateSentMessage = (client: Client<boolean>) => async (
     if (!rowID) { return; }
 
     // get translation result
-    const translatedRes = await translate(message.content, target.direction);
+    const translatedRes = hasURL(content)
+      ? content
+      : await translate(content, target.direction);
 
     await messageDB.setTranslatedContent(rowID, translatedRes);
     if (!waitingChannelIDs.has(targetChannel.id)) {

@@ -13,6 +13,7 @@ interface RawMsgDB {
     target_channel_id: string,
     original_content: string,
     translated_content: string | null,
+    attachment_json: string,
     display_name: string,
     avatar_url: string
   }
@@ -33,6 +34,7 @@ export const messageDBOperations = (
         .addColumn("target_channel_id", "text", (col) => col.notNull())
         .addColumn("original_content", "text", (col) => col.notNull())
         .addColumn("translated_content", "text")
+        .addColumn("attachment_json", "text", (col) => col.notNull())
         .addColumn("display_name", "text", (col) => col.notNull())
         .addColumn("avatar_url", "text")
         .execute();
@@ -43,10 +45,11 @@ export const messageDBOperations = (
     }
   }
 
-  // enqueue row into DB
+  // enqueue row into DB without translated_content
   const enqueue = async (
     target_channel_id: string,
     original_content: string,
+    attachment_json: string,
     display_name: string,
     avatar_url: string
   ) => {
@@ -57,6 +60,39 @@ export const messageDBOperations = (
           target_channel_id,
           original_content,
           translated_content: null,
+          attachment_json,
+          display_name,
+          avatar_url
+        })
+        .returning("id")
+        .executeTakeFirstOrThrow();
+      return insertedRow.id;
+    } catch (err) {
+      if (err instanceof NoResultError) {
+        return null;
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  // enqueue row into DB with all information
+  const enqueueAll = async (
+    target_channel_id: string,
+    original_content: string,
+    translated_content: string,
+    attachment_json: string,
+    display_name: string,
+    avatar_url: string
+  ) => {
+    try {
+      const insertedRow = await msgDB
+        .insertInto(MSG_DB_TABLE)
+        .values({
+          target_channel_id,
+          original_content,
+          translated_content,
+          attachment_json,
           display_name,
           avatar_url
         })
@@ -109,6 +145,7 @@ export const messageDBOperations = (
   return {
     init,
     enqueue,
+    enqueueAll,
     setTranslatedContent,
     getTranslatedContent,
     dequeue
