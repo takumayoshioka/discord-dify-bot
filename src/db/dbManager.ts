@@ -8,6 +8,7 @@ import {
   messageDBOperations,
 } from "./messageDB.js"
 
+// export type and error
 export {
   type TranslationDirection,
   NotTargetChannel,
