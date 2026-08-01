@@ -6,13 +6,13 @@
     "dotenv": "^17.4.2",
     "kysely": "^0.29.4",
     "linkifyjs": "^4.3.3",
-    "typescript": "^6.0.3",
     "zod": "^4.4.3"
   },
   "overrides": {
     "undici": "6.27.0"
   },
   "devDependencies": {
+    "typescript": "^6.0.3",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^26.1.0",
     "ts-node": "^10.9.2",

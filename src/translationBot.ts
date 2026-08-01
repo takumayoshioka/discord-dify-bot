@@ -112,7 +112,7 @@ const sendTranslatedContentBody = async (targetChannel: TextChannel) => {
   })
 
   await messageDB.dequeue(row.id);
-  await sendTranslatedContent(targetChannel);
+  await sendTranslatedContentBody(targetChannel);
 }
 
 const sendTranslatedContent = async (targetChannel: TextChannel) => {

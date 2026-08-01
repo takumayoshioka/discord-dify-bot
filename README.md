@@ -4,9 +4,20 @@
 
 - Manage Webhooks
 
+## Docker 
+
+- Build: `docker compose up --build`
+  - Run `docker compose up --build --no-cache` to fully rebuild
+
+### Test in Local
+
+- `npm run mock`
+  - Build a local server 
+
 ## TODO
 
 - :white_check_mark: Connect/Disconnect slash command
+- :soon: Send channel connection informatiohn
 - :soon: Add dictionary slash command
 - :x: Role color, custom role icon
 - :no_entry_sign: Translate a textmessage when someone reacts it by ja/en flag Emoji

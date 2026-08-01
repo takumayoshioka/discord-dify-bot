@@ -1,0 +1,11 @@
+services:
+  discord-translator:
+    build:
+      context: .
+    image: discord-translator:local
+    container_name: discord-translator
+    network_mode: host
+    env_file:
+      - .env.dev
+    volumes:
+      - ./db:/app/db
