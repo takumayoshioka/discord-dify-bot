@@ -77,8 +77,7 @@ const generateWebhook = async (channel: TextChannel) => {
   const webhooks = await channel.fetchWebhooks();
 
   const webhook = webhooks?.find((v) =>
-    v.isUserCreated() &&
-    v.owner.id === channel.client.user.id &&
+    v.owner?.id === channel.client.user.id &&
     v.name === botWebhookName
   ) ??
     await channel.createWebhook({ name: botWebhookName });
@@ -92,7 +91,7 @@ const waitingChannelIDs = new Set<string>();
 
 // send translated messages from message database
 // waitingChannelIDs must have targetChannel.id in this function
-const sendTranslatedContent = async (targetChannel: TextChannel) => {
+const sendTranslatedContentBody = async (targetChannel: TextChannel) => {
   const row = await messageDB.getTranslatedContent(targetChannel.id);
 
   if (!row) {
@@ -114,6 +113,15 @@ const sendTranslatedContent = async (targetChannel: TextChannel) => {
 
   await messageDB.dequeue(row.id);
   await sendTranslatedContent(targetChannel);
+}
+
+const sendTranslatedContent = async (targetChannel: TextChannel) => {
+  if (waitingChannelIDs.has(targetChannel.id)) {
+    return;
+  } else {
+    waitingChannelIDs.add(targetChannel.id);
+    await sendTranslatedContentBody(targetChannel);
+  }
 }
 
 // login 
@@ -190,10 +198,7 @@ export const botTranslateSentMessage = (client: Client<boolean>) => async (
       : await translate(content, target.direction);
 
     await messageDB.setTranslatedContent(rowID, translatedRes);
-    if (!waitingChannelIDs.has(targetChannel.id)) {
-      waitingChannelIDs.add(targetChannel.id);
-      await sendTranslatedContent(targetChannel);
-    }
+    await sendTranslatedContent(targetChannel);
   } catch (err) {
     if (err instanceof NotTargetChannel) { return; }
     console.error("Failed to translate or forward message: \n", err);

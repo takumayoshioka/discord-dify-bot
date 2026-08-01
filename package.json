@@ -23,7 +23,7 @@
   },
   "scripts": {
     "compile": "tsc -p .",
-    "predev": "rm -f db/* && npm run compile",
+    "predev": "npm run compile",
     "dev": "node --env-file=.env.dev dist/main.js",
     "premock": "npm run compile",
     "mock": "node --env-file=.env.dev dist/mockServer.js",
