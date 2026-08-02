@@ -1,0 +1,11 @@
+services:
+  discord-translator:
+    image: discord-translator:prod
+    env_file:
+      - .env
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G

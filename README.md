@@ -28,3 +28,4 @@
 - :white_check_mark: Send image
 - :white_check_mark: send message containing URL without translation
 - :hourglass: Send a error report to a specific channel if this bot encounters an error
+- Reform directories

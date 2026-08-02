@@ -23,6 +23,7 @@
   },
   "scripts": {
     "compile": "tsc -p .",
+    "compile:docker": "tsc -p tsconfig.docker.json",
     "predev": "npm run compile",
     "dev": "node --env-file=.env.dev dist/main.js",
     "premock": "npm run compile",

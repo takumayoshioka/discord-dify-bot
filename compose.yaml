@@ -2,10 +2,8 @@ services:
   discord-translator:
     build:
       context: .
-    image: discord-translator:local
+      dockerfile: Dockerfile
+    image: discord-translator:core
     container_name: discord-translator
-    network_mode: host
-    env_file:
-      - .env.dev
     volumes:
       - ./db:/app/db

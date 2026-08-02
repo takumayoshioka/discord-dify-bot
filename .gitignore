@@ -1,9 +1,6 @@
 # database
 db/*
 
-# data files
-channelTable.json
-
 # Logs
 logs
 *.log
@@ -86,7 +83,7 @@ out
 
 # Nuxt.js build / generate output
 .nuxt
-dist
+dist*
 .output
 
 # Gatsby files

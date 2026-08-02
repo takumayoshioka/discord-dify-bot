@@ -9,9 +9,9 @@ RUN apt-get -y update \
 COPY package.json package-lock.json ./
 RUN npm ci
 
-COPY tsconfig.json ./
+COPY tsconfig.json tsconfig.docker.json ./
 COPY src ./src
-RUN npm run compile
+RUN npm run compile:docker
 
 
 FROM node:24.18.0-bookworm-slim AS production-deps
@@ -32,7 +32,7 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-COPY --from=build /app/dist ./dist
+COPY --from=build /app/dist-docker ./dist
 COPY --from=production-deps /app/node_modules ./node_modules
 
 RUN mkdir -p /app/db && chown node:node /app/db

@@ -1,0 +1,6 @@
+services:
+  discord-translator:
+    image: discord-translator:local
+    network_mode: host
+    env_file:
+      - .env.dev
