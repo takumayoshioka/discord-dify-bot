@@ -1,7 +1,8 @@
 import { createServer } from "http";
-import "./jsonFormat.js";
-import { createTranslationResponse, getTranslationRequestMessage, parseTranslationRequest } from "./jsonFormat.js";
-import { getWorkflowURL } from "./translationURL.js";
+
+import "#src/jsonFormat";
+import { createTranslationResponse, getTranslationRequestMessage, parseTranslationRequest } from "#src/jsonFormat";
+import { getWorkflowURL } from "#src/translationURL";
 
 const requestURL = getWorkflowURL();
 const host = requestURL.hostname;

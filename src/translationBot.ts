@@ -21,17 +21,17 @@ import {
   getTranslationResponseMessage,
   parseAttachmentFiles,
   parseTranslationResponse
-} from "./jsonFormat.js";
+} from "#src/jsonFormat";
 import {
   getWorkflowURL,
   createTranslationRequestHeader
-} from "./translationURL.js";
+} from "#src/translationURL";
 import {
   channelDB,
   messageDB,
   type TranslationDirection,
   NotTargetChannel
-} from "./db/dbManager.js"
+} from "#src/db/dbManager"
 
 const isTextChannel = (channel: Channel): channel is TextChannel => {
   return channel instanceof TextChannel;

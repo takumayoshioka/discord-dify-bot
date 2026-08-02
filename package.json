@@ -21,6 +21,12 @@
   "allowScripts": {
     "better-sqlite3@13.0.2": true
   },
+  "imports": {
+    "#src/*": {
+      "types": "./src/*.ts",
+      "default": "./dist/*.js"
+    }
+  },
   "scripts": {
     "compile": "tsc -p .",
     "compile:docker": "tsc -p tsconfig.docker.json",

@@ -3,11 +3,12 @@ import {
   ChannelType,
   type Interaction,
 } from "discord.js";
+
 import {
   channelDB,
   ChannelConnectionFailure,
   ChannelDisconnectionFailure
-} from "./db/dbManager.js";
+} from "#src/db/dbManager";
 
 export const CONNECT_COMMAND_NAME = "connect";
 export const DISCONNECT_COMMAND_NAME = "disconnect";

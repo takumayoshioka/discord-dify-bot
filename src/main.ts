@@ -3,20 +3,20 @@ import {
   Events,
   GatewayIntentBits,
   Routes,
-} from 'discord.js';
+} from "discord.js";
 
-import { env } from "./env.js";
+import { env } from "#src/env";
 import {
   botLogin,
   botTranslateSentMessage,
   translateMessageCommand,
   botTranslateReplybyCommand,
-} from './translationBot.js';
+} from "#src/translationBot";
 import {
   connectCommand,
   disconnectCommand,
   botConnectionCommandsInteraction,
-} from './connectionCommands.js';
+} from "#src/connectionCommands";
 
 const client: Client = new Client({
   intents: [

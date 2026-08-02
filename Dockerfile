@@ -32,6 +32,7 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
+COPY package.json ./
 COPY --from=build /app/dist-docker ./dist
 COPY --from=production-deps /app/node_modules ./node_modules
 
