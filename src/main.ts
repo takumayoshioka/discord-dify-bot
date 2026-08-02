@@ -16,6 +16,8 @@ import {
   connectCommand,
   disconnectCommand,
   botConnectionCommandsInteraction,
+  showTargetCommand,
+  showAllCommand,
 } from "#src/connectionCommands";
 
 const client: Client = new Client({
@@ -44,6 +46,8 @@ await client.rest.put(
       translateMessageCommand.toJSON(),
       connectCommand.toJSON(),
       disconnectCommand.toJSON(),
+      showTargetCommand.toJSON(),
+      showAllCommand.toJSON(),
     ]
   }
 )

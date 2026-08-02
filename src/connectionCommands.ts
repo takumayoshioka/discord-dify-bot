@@ -2,22 +2,29 @@ import {
   SlashCommandBuilder,
   ChannelType,
   type Interaction,
+  ChatInputCommandInteraction,
+  PermissionFlagsBits,
 } from "discord.js";
 
 import {
   channelDB,
   ChannelConnectionFailure,
-  ChannelDisconnectionFailure
+  ChannelDisconnectionFailure,
+  NotTargetChannel
 } from "#src/db/dbManager";
 
-export const CONNECT_COMMAND_NAME = "connect";
-export const DISCONNECT_COMMAND_NAME = "disconnect";
-export const CONNECT_DISCONNECT_OPTION = { ja: "ja", en: "en" };
+const CONNECT_COMMAND_NAME = "connect";
+const DISCONNECT_COMMAND_NAME = "disconnect";
+const SHOW_TARGET_COMMAND_NAME = "show-target";
+const SHOW_ALL_COMMAND_NAME = "show-all";
+const CONNECT_DISCONNECT_OPTION = { ja: "ja", en: "en" };
+const SHOW_TARGET_OPTION = "ch";
 
 // connect/disconnect command builder
 export const connectCommand = new SlashCommandBuilder()
   .setName(CONNECT_COMMAND_NAME)
   .setDescription("Connect ja/en channels")
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
   .addChannelOption((option) =>
     option
       .setName(CONNECT_DISCONNECT_OPTION.ja)
@@ -36,6 +43,7 @@ export const connectCommand = new SlashCommandBuilder()
 export const disconnectCommand = new SlashCommandBuilder()
   .setName(DISCONNECT_COMMAND_NAME)
   .setDescription("Disconnect ja/en channels")
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
   .addChannelOption((option) =>
     option
       .setName(CONNECT_DISCONNECT_OPTION.ja)
@@ -51,6 +59,113 @@ export const disconnectCommand = new SlashCommandBuilder()
       .addChannelTypes(ChannelType.GuildText)
   );
 
+export const showTargetCommand = new SlashCommandBuilder()
+  .setName(SHOW_TARGET_COMMAND_NAME)
+  .setDescription("Show connected target channel")
+  .addChannelOption((option) =>
+    option
+      .setName(SHOW_TARGET_OPTION)
+      .setDescription("Target channel")
+      .setRequired(true)
+      .addChannelTypes(ChannelType.GuildText)
+  );
+
+export const showAllCommand = new SlashCommandBuilder()
+  .setName(SHOW_ALL_COMMAND_NAME)
+  .setDescription("Show all connected channels");
+
+const interactionConnect = async (
+  interaction: ChatInputCommandInteraction
+) => {
+  const jaChannel = interaction.options.getChannel(
+    CONNECT_DISCONNECT_OPTION.ja
+  );
+  const enChannel = interaction.options.getChannel(
+    CONNECT_DISCONNECT_OPTION.en
+  );
+  if (!jaChannel || !enChannel) {
+    console.error("Invalid channel(s)");
+    return;
+  }
+  await interaction.deferReply();
+  try {
+    await channelDB.enqueue(jaChannel.id, enChannel.id);
+    interaction.editReply("Connected.");
+  } catch (err) {
+    if (err instanceof ChannelConnectionFailure) {
+      interaction.editReply("Connection failured.")
+    } else {
+      throw err;
+    }
+  }
+}
+
+const interactionDisconnect = async (
+  interaction: ChatInputCommandInteraction
+) => {
+  const jaChannel = interaction.options.getChannel(
+    CONNECT_DISCONNECT_OPTION.ja
+  );
+  const enChannel = interaction.options.getChannel(
+    CONNECT_DISCONNECT_OPTION.en
+  );
+  if (!jaChannel || !enChannel) {
+    console.error("Invalid channel(s)");
+    return;
+  }
+  await interaction.deferReply();
+  try {
+    await channelDB.dequeue(jaChannel.id, enChannel.id);
+    interaction.editReply("Disconnected.");
+  } catch (err) {
+    if (err instanceof ChannelDisconnectionFailure) {
+      interaction.editReply("Disconnection failured.")
+    } else {
+      throw err;
+    }
+  }
+}
+
+const interactionShowTarget = async (
+  interaction: ChatInputCommandInteraction
+) => {
+  const srcChannel = interaction.options.getChannel(SHOW_TARGET_OPTION);
+  if (!srcChannel) {
+    console.error("Invalid channel");
+    return;
+  }
+  await interaction.deferReply();
+  try {
+    const dstChannel = await channelDB.getTargetChannel(srcChannel.id);
+    interaction.editReply(`Target channel is <#${dstChannel.channelID}>`);
+  } catch (err) {
+    if (err instanceof NotTargetChannel) {
+      interaction.editReply(
+        `Channel <#${srcChannel.id}> is not connected.`
+      );
+    } else {
+      throw err;
+    }
+  }
+}
+
+const interactionShowAll = async (
+  interaction: ChatInputCommandInteraction
+) => {
+  await interaction.deferReply();
+  const channelPairs = await channelDB.getAll();
+  const channelPairTexts: string[] = [];
+  for (const { ja_channel_id, en_channel_id } of channelPairs) {
+    channelPairTexts.push(
+      `<#${ja_channel_id}> :left_right_arrow: <#${en_channel_id}>`
+    );
+  }
+  const replyText = (channelPairTexts.length === 0)
+    ? "No connected channels"
+    : channelPairTexts.join("\n");
+  interaction.editReply(replyText);
+}
+
 // slash command interaction
 // TODO: refine messages for users
 export const botConnectionCommandsInteraction = async (
@@ -60,52 +175,22 @@ export const botConnectionCommandsInteraction = async (
 
   switch (interaction.commandName) {
     case CONNECT_COMMAND_NAME: {
-      const jaChannel = interaction.options.getChannel(
-        CONNECT_DISCONNECT_OPTION.ja
-      );
-      const enChannel = interaction.options.getChannel(
-        CONNECT_DISCONNECT_OPTION.en
-      );
-      if (!jaChannel || !enChannel) {
-        console.error("Invalid channel(s)");
-        return;
-      }
-      await interaction.deferReply();
-      try {
-        await channelDB.enqueue(jaChannel.id, enChannel.id);
-        interaction.editReply("Connected.")
-      } catch (err) {
-        if (err instanceof ChannelConnectionFailure) {
-          interaction.editReply("Connection failured.")
-        } else {
-          throw err
-        }
-      }
+      await interactionConnect(interaction);
       break;
     }
 
     case DISCONNECT_COMMAND_NAME: {
-      const jaChannel = interaction.options.getChannel(
-        CONNECT_DISCONNECT_OPTION.ja
-      );
-      const enChannel = interaction.options.getChannel(
-        CONNECT_DISCONNECT_OPTION.en
-      );
-      if (!jaChannel || !enChannel) {
-        console.error("Invalid channel(s)");
-        return;
-      }
-      await interaction.deferReply();
-      try {
-        await channelDB.dequeue(jaChannel.id, enChannel.id);
-        interaction.editReply("Disconnected.")
-      } catch (err) {
-        if (err instanceof ChannelDisconnectionFailure) {
-          interaction.editReply("Disconnection failured.")
-        } else {
-          throw err
-        }
-      }
+      await interactionDisconnect(interaction);
+      break;
+    }
+
+    case SHOW_TARGET_COMMAND_NAME: {
+      await interactionShowTarget(interaction);
+      break;
+    }
+
+    case SHOW_ALL_COMMAND_NAME: {
+      await interactionShowAll(interaction);
       break;
     }
 

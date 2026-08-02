@@ -6,8 +6,10 @@
 
 ## Docker 
 
-- Build: `docker compose up --build`
-  - Run `docker compose up --build --no-cache` to fully rebuild
+### Development
+
+- Start: `make dev-up`
+- End: `make dev-down`
 
 ### Test in Local
 
@@ -17,7 +19,7 @@
 ## TODO
 
 - :white_check_mark: Connect/Disconnect slash command
-- :soon: Send channel connection informatiohn
+- :white_check_mark: Send channel connection informatiohn
 - :soon: Add dictionary slash command
 - :x: Role color, custom role icon
 - :no_entry_sign: Translate a textmessage when someone reacts it by ja/en flag Emoji

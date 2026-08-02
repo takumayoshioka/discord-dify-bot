@@ -55,6 +55,11 @@ export const channelDBOperations = (
     const targetChannelIDDir =
       await channelDB
         .selectFrom(CHANNEL_DB_TABLE)
+        .where((exp) =>
+          exp.or([
+            exp("ja_channel_id", "==", channelID),
+            exp("en_channel_id", "==", channelID),
+          ]))
         .select((exp) => {
           const isJa = exp("ja_channel_id", "==", channelID);
 
@@ -131,10 +136,23 @@ export const channelDBOperations = (
     }
   }
 
+  // return all channel pairs
+  const getAll = async () => {
+    const table = await channelDB
+      .selectFrom(CHANNEL_DB_TABLE)
+      .selectAll()
+      .execute();
+
+    return table.map(({ id: _id, ja_channel_id, en_channel_id }) => {
+      return { ja_channel_id, en_channel_id }
+    });
+  }
+
   return {
     init,
     getTargetChannel,
+    getAll,
     enqueue,
-    dequeue
+    dequeue,
   }
 }
