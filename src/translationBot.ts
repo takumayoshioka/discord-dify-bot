@@ -11,6 +11,10 @@ import {
   type Interaction,
   type OmitPartialGroupDMChannel,
   type Snowflake,
+  type MessageReaction,
+  type PartialMessageReaction,
+  type User,
+  type PartialUser,
 } from "discord.js";
 import {
   find as linkifyFind
@@ -98,7 +102,7 @@ const sendTranslatedContentBody = async (targetChannel: TextChannel) => {
     waitingChannelIDs.delete(targetChannel.id);
     return;
   }
-  if (!(row.translated_content)) {
+  if (!(row.translated_content) && row.translated_content !== "") {
     waitingChannelIDs.delete(targetChannel.id);
     return;
   }
@@ -193,7 +197,7 @@ export const botTranslateSentMessage = (client: Client<boolean>) => async (
     if (!rowID) { return; }
 
     // get translation result
-    const translatedRes = hasURL(content)
+    const translatedRes = (hasURL(content) || content.length === 0)
       ? content
       : await translate(content, target.direction);
 
@@ -218,6 +222,9 @@ export const botTranslateReplybyCommand = async (
 ) => {
   if (!interaction.isMessageContextMenuCommand()) { return; }
 
+  const message = interaction.targetMessage;
+  if (message.content.length === 0) { return; }
+
   // const commandName = interaction.commandName;
   // const dir: TranslationDirection | null =
   //   (commandName === "ja-to-en") ? "ja-to-en"
@@ -231,8 +238,45 @@ export const botTranslateReplybyCommand = async (
     flags: MessageFlags.Ephemeral
   });
 
-  const message = interaction.targetMessage;
   const translatedRes = await translate(message.content, dir);
-
   await interaction.editReply(translatedRes);
+}
+
+// transate messages, if it has been reacted by specific emoji
+export const botTranslateEmojiMessage = async (
+  reaction: MessageReaction | PartialMessageReaction,
+  _user: User | PartialUser) => {
+  if (reaction.partial) { await reaction.fetch(); }
+
+  const translationDirection: TranslationDirection | null =
+    (reaction.emoji.name === "\u{1F1EF}\u{1F1F5}")
+      ? "en-to-ja"
+      : (
+        reaction.emoji.name === "\u{1F1EC}\u{1F1E7}" ||
+        reaction.emoji.name === "\u{1F1FA}\u{1F1F8}"
+      ) ? "ja-to-en" : null;
+  if (!translationDirection) { return; }
+
+  const message = reaction.message.partial
+    ? await reaction.message.fetch()
+    : reaction.message;
+
+  if (message.content.length === 0) { return; }
+
+  const targetChannel = message.channel;
+  if (!targetChannel.isSendable()) { return; }
+
+  // get translation result
+  const translatedRes = await translate(message.content, translationDirection);
+
+  await targetChannel.send({
+    content: translatedRes,
+    reply: {
+      messageReference: message.id,
+      failIfNotExists: false
+    },
+    allowedMentions: {
+      repliedUser: false
+    },
+  })
 }

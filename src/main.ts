@@ -2,6 +2,7 @@ import {
   Client,
   Events,
   GatewayIntentBits,
+  Partials,
   Routes,
 } from "discord.js";
 
@@ -11,6 +12,7 @@ import {
   botTranslateSentMessage,
   translateMessageCommand,
   botTranslateReplybyCommand,
+  botTranslateEmojiMessage,
 } from "#src/translationBot";
 import {
   connectCommand,
@@ -24,8 +26,13 @@ const client: Client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildWebhooks
+  ],
+  partials: [
+    Partials.Message,
+    Partials.Reaction
   ]
 });
 
@@ -33,6 +40,7 @@ const client: Client = new Client({
 client.once(Events.ClientReady, botLogin);
 client.on(Events.MessageCreate, botTranslateSentMessage(client));
 client.on(Events.InteractionCreate, botTranslateReplybyCommand);
+client.on(Events.MessageReactionAdd, botTranslateEmojiMessage);
 client.on(Events.InteractionCreate, botConnectionCommandsInteraction);
 
 // login
@@ -40,7 +48,8 @@ await client.login(env.DISCORD_TOKEN);
 
 // set slash command
 await client.rest.put(
-  Routes.applicationCommands(env.DISCORD_APP_ID),
+  Routes.applicationGuildCommands(
+    env.DISCORD_APP_ID, env.DISCORD_GUILD_ID),
   {
     body: [
       translateMessageCommand.toJSON(),

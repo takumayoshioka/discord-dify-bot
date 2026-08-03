@@ -14,8 +14,10 @@ dev-down:
 	docker compose -f $(COMPOSE) -f $(COMPOSE_DEV) down --timeout 30
 
 prod-up:
-	docker compose -f $(COMPOSE) -f $(COMPOSE_PROD) up -d
+	docker compose -f $(COMPOSE) -f $(COMPOSE_PROD) up -d --build
 
 prod-down:
 	docker compose -f $(COMPOSE) -f $(COMPOSE_PROD) down --timeout 30
 
+clear-db:
+	rm -r db/*

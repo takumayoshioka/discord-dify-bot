@@ -5,6 +5,7 @@ const envSchema = z.object({
 
   DISCORD_TOKEN: z.string().min(1),
   DISCORD_APP_ID: z.string().min(1),
+  DISCORD_GUILD_ID: z.string().min(1),
 
   BASE_URL: z.url().transform((s) => s.replace(/\$/, "")),
   DIFY_API_KEY: z.string().min(1).optional(),
