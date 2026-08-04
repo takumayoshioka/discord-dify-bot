@@ -54,6 +54,8 @@ This bot replies a translated message if you reacts an original message with any
 
 - Run `npm run mock`
   - This commands setup local server
+  - This commands restarts a local mock server everytime compiled files for it are changed
+    - Note that, because `npm run dev` compiles source files, `npm run mock` restarts a local server after rerun `npm run dev` 
 
 ### Production Build
 

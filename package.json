@@ -33,7 +33,7 @@
     "predev": "npm run compile",
     "dev": "node --env-file=.env.dev dist/main.js",
     "premock": "npm run compile",
-    "mock": "node --env-file=.env.dev dist/mockServer.js",
+    "mock": "node --watch --env-file=.env.dev dist/mockServer.js",
     "prestart": "npm run compile",
     "start": "node --env-file=.env dist/main.js"
   }
