@@ -1,0 +1,32 @@
+name: Node CI
+
+on: [push, pull_request]
+
+permissions:
+  content: read
+
+jobs:
+  check-npm-ci-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: npm
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc -p tsconfig.json --noEmit
+
+      - name: Compile
+        run: npm run compile
+
+      - name: Compile Only Docker Artifacts
+        run: npm run compile:docker

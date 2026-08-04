@@ -1,0 +1,20 @@
+name: Node CI
+
+on: [pull_request]
+
+permissions:
+  content: read
+
+jobs:
+  check-npm-ci-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 
+        uses: actions/checkout@v4
+
+      - name: Prepare Environment File
+        uses: cp .env.example .env.dev
+
+      - name: Build Docker Development Environment
+        uses: make dev-up-nostart
