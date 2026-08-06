@@ -21,9 +21,10 @@ import {
   showTargetCommand,
   showAllCommand,
 } from "#src/connectionCommands";
-import { resetMsgDB } from "#src/db/dbManager";
+import { channelDB, messageDB } from "#src/db/dbManager";
 
-await resetMsgDB();
+await channelDB.init();
+await messageDB.init();
 
 const client: Client = new Client({
   intents: [
