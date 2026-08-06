@@ -182,6 +182,7 @@ export const botLogin = async (client: Client<true>) => {
 
   if (isPermission) {
     console.log(`Ready! Logged in as ${client.user.tag}`);
+    await messageDB.reset();
   } else {
     console.error(
       `User ${client.user.tag} does not have ManageWebhook permission`

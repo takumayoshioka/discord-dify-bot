@@ -8,15 +8,18 @@ import {
 
 import {
   channelDB,
+  messageDB,
   ChannelConnectionFailure,
   ChannelDisconnectionFailure,
-  NotTargetChannel
+  NotTargetChannel,
 } from "#src/db/dbManager";
 
 const CONNECT_COMMAND_NAME = "connect";
 const DISCONNECT_COMMAND_NAME = "disconnect";
 const SHOW_TARGET_COMMAND_NAME = "show-target";
 const SHOW_ALL_COMMAND_NAME = "show-all";
+const RESET_CHANNEL_DB_COMMAND_NAME = "reset-ch";
+const RESET_MESSAGE_DB_COMMAND_NAME = "reset-msg";
 const CONNECT_DISCONNECT_OPTION = { ja: "ja", en: "en" };
 const SHOW_TARGET_OPTION = "ch";
 
@@ -73,6 +76,15 @@ export const showTargetCommand = new SlashCommandBuilder()
 export const showAllCommand = new SlashCommandBuilder()
   .setName(SHOW_ALL_COMMAND_NAME)
   .setDescription("Show all connected channels");
+
+export const resetChDBCommand = new SlashCommandBuilder()
+  .setName(RESET_CHANNEL_DB_COMMAND_NAME)
+  .setDescription("Reset channel DB")
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels);
+
+export const resetMsgDBCommand = new SlashCommandBuilder()
+  .setName(RESET_MESSAGE_DB_COMMAND_NAME)
+  .setDescription("Reset message DB");
 
 const interactionConnect = async (
   interaction: ChatInputCommandInteraction
@@ -166,6 +178,22 @@ const interactionShowAll = async (
   await interaction.editReply(replyText);
 }
 
+const interactionResetChDB = async (
+  interaction: ChatInputCommandInteraction
+) => {
+  await interaction.deferReply();
+  await channelDB.reset();
+  await interaction.editReply("Channel DB cleared");
+}
+
+const interactionResetMsgDB = async (
+  interaction: ChatInputCommandInteraction
+) => {
+  await interaction.deferReply();
+  await messageDB.reset();
+  await interaction.editReply("Message DB cleared");
+}
+
 // slash command interaction
 // TODO: refine messages for users
 export const botConnectionCommandsInteraction = async (
@@ -191,6 +219,16 @@ export const botConnectionCommandsInteraction = async (
 
     case SHOW_ALL_COMMAND_NAME: {
       await interactionShowAll(interaction);
+      break;
+    }
+
+    case RESET_CHANNEL_DB_COMMAND_NAME: {
+      await interactionResetChDB(interaction);
+      break;
+    }
+
+    case RESET_MESSAGE_DB_COMMAND_NAME: {
+      await interactionResetMsgDB(interaction);
       break;
     }
 

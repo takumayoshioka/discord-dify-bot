@@ -20,7 +20,9 @@ import {
   botConnectionCommandsInteraction,
   showTargetCommand,
   showAllCommand,
-} from "#src/connectionCommands";
+  resetChDBCommand,
+  resetMsgDBCommand,
+} from "#src/slashCommands";
 import { channelDB, messageDB } from "#src/db/dbManager";
 
 await channelDB.init();
@@ -61,6 +63,8 @@ await client.rest.put(
       disconnectCommand.toJSON(),
       showTargetCommand.toJSON(),
       showAllCommand.toJSON(),
+      resetChDBCommand.toJSON(),
+      resetMsgDBCommand.toJSON()
     ]
   }
 )

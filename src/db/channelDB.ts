@@ -48,6 +48,10 @@ export const channelDBOperations = (
     }
   }
 
+  const reset = async () => {
+    await channelDB.deleteFrom(CHANNEL_DB_TABLE).execute();
+  }
+
   // return pair opponent 
   const getTargetChannel = async (
     channelID: string
@@ -150,6 +154,7 @@ export const channelDBOperations = (
 
   return {
     init,
+    reset,
     getTargetChannel,
     getAll,
     enqueue,

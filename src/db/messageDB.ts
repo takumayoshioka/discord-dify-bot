@@ -45,6 +45,11 @@ export const messageDBOperations = (
     }
   }
 
+  // reset DB
+  const reset = async () => {
+    await msgDB.deleteFrom(MSG_DB_TABLE).execute();
+  }
+
   // enqueue row into DB without translated_content
   const enqueue = async (
     target_channel_id: string,
@@ -144,6 +149,7 @@ export const messageDBOperations = (
 
   return {
     init,
+    reset,
     enqueue,
     enqueueAll,
     setTranslatedContent,
