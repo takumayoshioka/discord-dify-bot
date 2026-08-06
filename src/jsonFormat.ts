@@ -82,12 +82,7 @@ export const parseTranslationResponse = (json: string)
   } catch (err) {
     if (err instanceof SyntaxError) {
       throw new Error(
-        `Translation API response returned invalid JSON.\n
-        ${json}`
-      );
-    } else if (err instanceof z.ZodError) {
-      throw new Error(
-        `Translation API response does not match the expected format.\n
+        `Translation API response is invalid JSON.\n
         ${json}`
       );
     } else {

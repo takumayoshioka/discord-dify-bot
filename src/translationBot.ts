@@ -24,7 +24,7 @@ import {
   createTranslationRequest,
   getTranslationResponseMessage,
   parseAttachmentFiles,
-  parseTranslationResponse
+  parseTranslationResponse,
 } from "#src/jsonFormat";
 import {
   getWorkflowURL,
@@ -45,16 +45,39 @@ const hasURL = (message: string) => {
   return linkifyFind(message, "url").length > 0;
 }
 
-// translation request
-const translate = async (message: string, _dir: TranslationDirection) => {
-  const response = await fetch(getWorkflowURL(), {
-    method: "POST",
-    headers: createTranslationRequestHeader(),
-    body: JSON.stringify(createTranslationRequest(message)),
+class Timeout extends Error { };
+class HttpError extends Error { };
+
+// set timeout 
+const setTimeoutRace = <T>(
+  targetPromise: Promise<T>, timeout: number
+) => {
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    setTimeout(() => {
+      reject(new Error(`Timeout: ${String(targetPromise)}`))
+    }, timeout);
   });
 
+  return Promise.race([
+    targetPromise, timeoutPromise
+  ])
+}
+
+// translation request
+const translateBody = async (message: string, _dir: TranslationDirection) => {
+  let response: Response;
+  try {
+    response = await fetch(getWorkflowURL(), {
+      method: "POST",
+      headers: createTranslationRequestHeader(),
+      body: JSON.stringify(createTranslationRequest(message)),
+    });
+  } catch (_) {
+    throw new HttpError("Network error");
+  }
+
   if (!response.ok) {
-    throw new Error(`Server request failed: ${response.status}`);
+    throw new HttpError(`${response.status}: ${response.statusText}`);
   }
 
   const rawBody = await response.text();
@@ -63,6 +86,20 @@ const translate = async (message: string, _dir: TranslationDirection) => {
     return getTranslationResponseMessage(body);
   } catch (err) {
     throw new Error(`Invalid response: \n${err}`);
+  }
+}
+
+const translate = async (message: string, dir: TranslationDirection) => {
+  try {
+    return await setTimeoutRace(translateBody(message, dir), 15_000);
+  } catch (err) {
+    if (err instanceof Timeout) {
+      return `[Server timeout] original message:\n${message}`;
+    } else if (err instanceof HttpError) {
+      return `[${err.message}] original message:\n${message}`;
+    } else {
+      return `[Unknown error] original message:\n${message}`;
+    }
   }
 }
 
@@ -205,7 +242,7 @@ export const botTranslateSentMessage = (client: Client<boolean>) => async (
     await sendTranslatedContent(targetChannel);
   } catch (err) {
     if (err instanceof NotTargetChannel) { return; }
-    console.error("Failed to translate or forward message: \n", err);
+    console.error("Failed to forward message: \n", err);
   }
 }
 

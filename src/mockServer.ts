@@ -1,7 +1,11 @@
 import { createServer } from "http";
 
 import "#src/jsonFormat";
-import { createTranslationResponse, getTranslationRequestMessage, parseTranslationRequest } from "#src/jsonFormat";
+import {
+  createTranslationResponse,
+  getTranslationRequestMessage,
+  parseTranslationRequest
+} from "#src/jsonFormat";
 import { getWorkflowURL } from "#src/translationURL";
 
 const requestURL = getWorkflowURL();

@@ -90,12 +90,12 @@ const interactionConnect = async (
   await interaction.deferReply();
   try {
     await channelDB.enqueue(jaChannel.id, enChannel.id);
-    interaction.editReply("Connected.");
+    await interaction.editReply("Connected.");
   } catch (err) {
     if (err instanceof ChannelConnectionFailure) {
-      interaction.editReply("Connection failured.")
+      await interaction.editReply("Connection failured.")
     } else {
-      throw err;
+      await interaction.editReply("[Bot internal error: connect command]")
     }
   }
 }
@@ -116,12 +116,12 @@ const interactionDisconnect = async (
   await interaction.deferReply();
   try {
     await channelDB.dequeue(jaChannel.id, enChannel.id);
-    interaction.editReply("Disconnected.");
+    await interaction.editReply("Disconnected.");
   } catch (err) {
     if (err instanceof ChannelDisconnectionFailure) {
-      interaction.editReply("Disconnection failured.")
+      await interaction.editReply("Disconnection failured.")
     } else {
-      throw err;
+      await interaction.editReply("[Bot internal error: disconnect command]")
     }
   }
 }
@@ -137,14 +137,14 @@ const interactionShowTarget = async (
   await interaction.deferReply();
   try {
     const dstChannel = await channelDB.getTargetChannel(srcChannel.id);
-    interaction.editReply(`Target channel is <#${dstChannel.channelID}>`);
+    await interaction.editReply(`Target channel is <#${dstChannel.channelID}>`);
   } catch (err) {
     if (err instanceof NotTargetChannel) {
-      interaction.editReply(
+      await interaction.editReply(
         `Channel <#${srcChannel.id}> is not connected.`
       );
     } else {
-      throw err;
+      await interaction.editReply("[Bot internal error: show-target command]")
     }
   }
 }
@@ -163,7 +163,7 @@ const interactionShowAll = async (
   const replyText = (channelPairTexts.length === 0)
     ? "No connected channels"
     : channelPairTexts.join("\n");
-  interaction.editReply(replyText);
+  await interaction.editReply(replyText);
 }
 
 // slash command interaction
