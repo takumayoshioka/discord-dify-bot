@@ -54,7 +54,7 @@ const setTimeoutRace = <T>(
 ) => {
   const timeoutPromise = new Promise<T>((_, reject) => {
     setTimeout(() => {
-      reject(new Error(`Timeout: ${String(targetPromise)}`))
+      reject(new Timeout(`Timeout: ${String(targetPromise)}`))
     }, timeout);
   });
 
