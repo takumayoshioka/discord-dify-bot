@@ -21,6 +21,9 @@ import {
   showTargetCommand,
   showAllCommand,
 } from "#src/connectionCommands";
+import { resetMsgDB } from "#src/db/dbManager";
+
+await resetMsgDB();
 
 const client: Client = new Client({
   intents: [

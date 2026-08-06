@@ -32,12 +32,13 @@ const MSG_DATABASE_PATH_RM = join(
   DATABASE_PATH, "MsgDB.*"
 )
 
-for await (const file of glob(MSG_DATABASE_PATH_RM)) {
-  await rm(file, { force: true });
-}
-
 const rawChannelDB = await openChannelDB(CHANNEL_DATABASE_PATH);
 const rawMsgDB = await openMessageDB(MSG_DATABASE_PATH);
 
+export const resetMsgDB = async () => {
+  for await (const file of glob(MSG_DATABASE_PATH_RM)) {
+    await rm(file, { force: true });
+  }
+}
 export const channelDB = channelDBOperations(rawChannelDB);
 export const messageDB = messageDBOperations(rawMsgDB);
