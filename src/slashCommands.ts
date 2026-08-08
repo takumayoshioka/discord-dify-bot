@@ -105,7 +105,7 @@ const interactionConnect = async (
     await interaction.editReply("Connected.");
   } catch (err) {
     if (err instanceof ChannelConnectionFailure) {
-      await interaction.editReply("Connection failured.")
+      await interaction.editReply("Connection failure.")
     } else {
       await interaction.editReply("[Bot internal error: connect command]")
     }
@@ -131,7 +131,7 @@ const interactionDisconnect = async (
     await interaction.editReply("Disconnected.");
   } catch (err) {
     if (err instanceof ChannelDisconnectionFailure) {
-      await interaction.editReply("Disconnection failured.")
+      await interaction.editReply("Disconnection failure.")
     } else {
       await interaction.editReply("[Bot internal error: disconnect command]")
     }
