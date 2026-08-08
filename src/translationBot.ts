@@ -206,14 +206,19 @@ export const botTranslateSentMessage = (client: Client<boolean>) => async (
     // reject non-TextChannel
     if (!isTextChannel(targetChannel!)) { return; }
 
+    const content = message.content;
     const attachedFiles = [...message.attachments.values()]
       .map((attachment) => ({
         attachment: attachment.url,
         name: attachment.name
       }));
 
+    // does not send empty message
+    if (content.length === 0 && attachedFiles.length === 0) {
+      return;
+    }
+
     // sending with copying author
-    const content = message.content;
     const displayName =
       message.member?.displayName ??
       message.author.displayName;
