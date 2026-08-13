@@ -169,7 +169,7 @@ const interactionShowAll = async (
   const channelPairTexts: string[] = []
   for (const { ja_channel_id, en_channel_id } of channelPairs) {
     channelPairTexts.push(
-      `<#${ja_channel_id}> :left_right_arrow: <#${en_channel_id}>`
+      `ja: <#${ja_channel_id}> :left_right_arrow: en: <#${en_channel_id}>`
     )
   }
   const replyText = (channelPairTexts.length === 0)

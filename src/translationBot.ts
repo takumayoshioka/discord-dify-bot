@@ -63,8 +63,20 @@ const setTimeoutRace = <T>(
   ])
 }
 
+// return an additional prompt 
+const getTranslationDirectionMessage = (dir: TranslationDirection) => {
+  return (() => {
+    switch (dir) {
+      case "ja-to-en":
+        return "翻訳先言語：英語"
+      case "en-to-ja":
+        return "翻訳先言語：日本語"
+    }
+  })() + "\n翻訳するテキストは以下の通りです。\n"
+}
+
 // translation request
-const translateBody = async (message: string, _dir: TranslationDirection) => {
+const translateBody = async (message: string) => {
   let response: Response
   try {
     response = await fetch(getWorkflowURL(), {
@@ -91,7 +103,10 @@ const translateBody = async (message: string, _dir: TranslationDirection) => {
 
 const translate = async (message: string, dir: TranslationDirection) => {
   try {
-    return setTimeoutRace(translateBody(message, dir), 15_000)
+    return await setTimeoutRace(
+      translateBody(getTranslationDirectionMessage(dir) + message),
+      15_000
+    )
   } catch (err) {
     if (err instanceof Timeout) {
       return `[Server timeout] original message:\n${message}`
@@ -265,14 +280,11 @@ export const botTranslateReplybyCommand = async (
   const message = interaction.targetMessage
   if (message.content.length === 0) { return }
 
-  // const commandName = interaction.commandName;
-  // const dir: TranslationDirection | null =
-  //   (commandName === "ja-to-en") ? "ja-to-en"
-  //     : (commandName === "en-to-ja") ? "en-to-ja" : null;
-  // if (!dir) { return; }
-
-  // direction does not used 
-  const dir: TranslationDirection = "ja-to-en"
+  const commandName = interaction.commandName
+  const dir: TranslationDirection | undefined =
+    (commandName === "ja-to-en") ? "ja-to-en"
+      : (commandName === "en-to-ja") ? "en-to-ja" : undefined
+  if (dir === undefined) { return }
 
   await interaction.deferReply({
     flags: MessageFlags.Ephemeral
