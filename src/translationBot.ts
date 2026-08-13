@@ -16,9 +16,6 @@ import {
   type User,
   type PartialUser,
 } from "discord.js"
-import {
-  find as linkifyFind
-} from "linkifyjs"
 
 import {
   createTranslationRequest,
@@ -39,10 +36,6 @@ import {
 
 const isTextChannel = (channel: Channel): channel is TextChannel => {
   return channel instanceof TextChannel
-}
-
-const hasURL = (message: string) => {
-  return linkifyFind(message, "url").length > 0
 }
 
 class Timeout extends Error { };
@@ -252,7 +245,8 @@ export const botTranslateSentMessage = (client: Client<boolean>) => async (
     if (!rowID) { return }
 
     // get translation result
-    const translatedRes = (hasURL(content) || content.length === 0)
+    // do not translate it if it is empty
+    const translatedRes = (content.length === 0)
       ? content
       : await translate(content, target.direction)
 
