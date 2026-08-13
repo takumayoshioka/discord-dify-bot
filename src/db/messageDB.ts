@@ -2,10 +2,10 @@ import {
   type Generated,
   Kysely,
   NoResultError,
-} from "kysely";
-import { openDB } from "#src/db/commonDB";
+} from "kysely"
+import { openDB } from "#src/db/commonDB"
 
-const MSG_DB_TABLE = "translation_queue";
+const MSG_DB_TABLE = "translation_queue"
 
 interface RawMsgDB {
   [MSG_DB_TABLE]: {
@@ -19,7 +19,7 @@ interface RawMsgDB {
   }
 }
 
-export const openMessageDB = openDB<RawMsgDB>;
+export const openMessageDB = openDB<RawMsgDB>
 
 export const messageDBOperations = (
   msgDB: Kysely<RawMsgDB>
@@ -37,17 +37,17 @@ export const messageDBOperations = (
         .addColumn("attachment_json", "text", (col) => col.notNull())
         .addColumn("display_name", "text", (col) => col.notNull())
         .addColumn("avatar_url", "text")
-        .execute();
+        .execute()
     } catch (err) {
       throw new Error(
         `Failed to initialize message translation db`
-      );
+      )
     }
   }
 
   // reset DB
   const reset = async () => {
-    await msgDB.deleteFrom(MSG_DB_TABLE).execute();
+    await msgDB.deleteFrom(MSG_DB_TABLE).execute()
   }
 
   // enqueue row into DB without translated_content
@@ -70,13 +70,13 @@ export const messageDBOperations = (
           avatar_url
         })
         .returning("id")
-        .executeTakeFirstOrThrow();
-      return insertedRow.id;
+        .executeTakeFirstOrThrow()
+      return insertedRow.id
     } catch (err) {
       if (err instanceof NoResultError) {
-        return null;
+        return null
       } else {
-        throw err;
+        throw err
       }
     }
   }
@@ -102,13 +102,13 @@ export const messageDBOperations = (
           avatar_url
         })
         .returning("id")
-        .executeTakeFirstOrThrow();
-      return insertedRow.id;
+        .executeTakeFirstOrThrow()
+      return insertedRow.id
     } catch (err) {
       if (err instanceof NoResultError) {
-        return null;
+        return null
       } else {
-        throw err;
+        throw err
       }
     }
   }
@@ -134,7 +134,7 @@ export const messageDBOperations = (
       .where("target_channel_id", "==", target_channel_id)
       .orderBy("id", "asc")
       .limit(1)
-      .executeTakeFirst();
+      .executeTakeFirst()
   }
 
   // delete already sent content
@@ -144,7 +144,7 @@ export const messageDBOperations = (
     await msgDB
       .deleteFrom(MSG_DB_TABLE)
       .where("id", "==", id)
-      .execute();
+      .execute()
   }
 
   return {

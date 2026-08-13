@@ -15,21 +15,21 @@ import {
   type PartialMessageReaction,
   type User,
   type PartialUser,
-} from "discord.js";
+} from "discord.js"
 import {
   find as linkifyFind
-} from "linkifyjs";
+} from "linkifyjs"
 
 import {
   createTranslationRequest,
   getTranslationResponseMessage,
   parseAttachmentFiles,
   parseTranslationResponse,
-} from "#src/jsonFormat";
+} from "#src/jsonFormat"
 import {
   getWorkflowURL,
   createTranslationRequestHeader
-} from "#src/translationURL";
+} from "#src/translationURL"
 import {
   channelDB,
   messageDB,
@@ -38,11 +38,11 @@ import {
 } from "#src/db/dbManager"
 
 const isTextChannel = (channel: Channel): channel is TextChannel => {
-  return channel instanceof TextChannel;
+  return channel instanceof TextChannel
 }
 
 const hasURL = (message: string) => {
-  return linkifyFind(message, "url").length > 0;
+  return linkifyFind(message, "url").length > 0
 }
 
 class Timeout extends Error { };
@@ -55,8 +55,8 @@ const setTimeoutRace = <T>(
   const timeoutPromise = new Promise<T>((_, reject) => {
     setTimeout(() => {
       reject(new Timeout(`Timeout: ${String(targetPromise)}`))
-    }, timeout);
-  });
+    }, timeout)
+  })
 
   return Promise.race([
     targetPromise, timeoutPromise
@@ -65,86 +65,86 @@ const setTimeoutRace = <T>(
 
 // translation request
 const translateBody = async (message: string, _dir: TranslationDirection) => {
-  let response: Response;
+  let response: Response
   try {
     response = await fetch(getWorkflowURL(), {
       method: "POST",
       headers: createTranslationRequestHeader(),
       body: JSON.stringify(createTranslationRequest(message)),
-    });
+    })
   } catch (_) {
-    throw new HttpError("Network error");
+    throw new HttpError("Network error")
   }
 
   if (!response.ok) {
-    throw new HttpError(`${response.status}: ${response.statusText}`);
+    throw new HttpError(`${response.status}: ${response.statusText}`)
   }
 
-  const rawBody = await response.text();
+  const rawBody = await response.text()
   try {
-    const body = parseTranslationResponse(rawBody);
-    return getTranslationResponseMessage(body);
+    const body = parseTranslationResponse(rawBody)
+    return getTranslationResponseMessage(body)
   } catch (err) {
-    throw new Error(`Invalid response: \n${err}`);
+    throw new Error(`Invalid response: \n${err}`)
   }
 }
 
 const translate = async (message: string, dir: TranslationDirection) => {
   try {
-    return await setTimeoutRace(translateBody(message, dir), 15_000);
+    return setTimeoutRace(translateBody(message, dir), 15_000)
   } catch (err) {
     if (err instanceof Timeout) {
-      return `[Server timeout] original message:\n${message}`;
+      return `[Server timeout] original message:\n${message}`
     } else if (err instanceof HttpError) {
-      return `[${err.message}] original message:\n${message}`;
+      return `[${err.message}] original message:\n${message}`
     } else {
-      return `[Unknown error] original message:\n${message}`;
+      return `[Unknown error] original message:\n${message}`
     }
   }
 }
 
 // webhooks cache
-const mapWebhooks = new Map<Snowflake, Webhook>();
-const botWebhookName: string = "Webhook: Translator Bot";
+const mapWebhooks = new Map<Snowflake, Webhook>()
+const botWebhookName: string = "Webhook: Translator Bot"
 
 const getWebhook = async (channel: TextChannel) => {
   const webhook = mapWebhooks.get(channel.id) ??
-    await generateWebhook(channel);
+    await generateWebhook(channel)
 
-  return webhook;
+  return webhook
 }
 
 const generateWebhook = async (channel: TextChannel) => {
-  const webhooks = await channel.fetchWebhooks();
+  const webhooks = await channel.fetchWebhooks()
 
   const webhook = webhooks?.find((v) =>
     v.owner?.id === channel.client.user.id &&
     v.name === botWebhookName
   ) ??
-    await channel.createWebhook({ name: botWebhookName });
+    await channel.createWebhook({ name: botWebhookName })
 
-  mapWebhooks.set(channel.id, webhook);
-  return webhook;
+  mapWebhooks.set(channel.id, webhook)
+  return webhook
 }
 
 // collects channel IDs that has non-sent messages 
-const waitingChannelIDs = new Set<string>();
+const waitingChannelIDs = new Set<string>()
 
 // send translated messages from message database
 // waitingChannelIDs must have targetChannel.id in this function
 const sendTranslatedContentBody = async (targetChannel: TextChannel) => {
-  const row = await messageDB.getTranslatedContent(targetChannel.id);
+  const row = await messageDB.getTranslatedContent(targetChannel.id)
 
   if (!row) {
-    waitingChannelIDs.delete(targetChannel.id);
-    return;
+    waitingChannelIDs.delete(targetChannel.id)
+    return
   }
   if (!(row.translated_content) && row.translated_content !== "") {
-    waitingChannelIDs.delete(targetChannel.id);
-    return;
+    waitingChannelIDs.delete(targetChannel.id)
+    return
   }
 
-  const webhook = await getWebhook(targetChannel);
+  const webhook = await getWebhook(targetChannel)
   await webhook.send({
     content: row.translated_content,
     files: parseAttachmentFiles(row.attachment_json),
@@ -152,16 +152,16 @@ const sendTranslatedContentBody = async (targetChannel: TextChannel) => {
     avatarURL: row.avatar_url,
   })
 
-  await messageDB.dequeue(row.id);
-  await sendTranslatedContentBody(targetChannel);
+  await messageDB.dequeue(row.id)
+  await sendTranslatedContentBody(targetChannel)
 }
 
 const sendTranslatedContent = async (targetChannel: TextChannel) => {
   if (waitingChannelIDs.has(targetChannel.id)) {
-    return;
+    return
   } else {
-    waitingChannelIDs.add(targetChannel.id);
-    await sendTranslatedContentBody(targetChannel);
+    waitingChannelIDs.add(targetChannel.id)
+    await sendTranslatedContentBody(targetChannel)
   }
 }
 
@@ -171,22 +171,22 @@ export const botLogin = async (client: Client<true>) => {
   const isPermission = client.guilds.cache.reduce(
     // this bot must have ManageWebhook permission
     (acc, guild) => {
-      const botMember = guild.members.me;
-      if (!botMember) { return false; }
+      const botMember = guild.members.me
+      if (!botMember) { return false }
 
       return acc
-        && botMember.permissions.has(PermissionFlagsBits.ManageWebhooks);
+        && botMember.permissions.has(PermissionFlagsBits.ManageWebhooks)
     },
     true
-  );
+  )
 
   if (isPermission) {
-    console.log(`Ready! Logged in as ${client.user.tag}`);
-    await messageDB.reset();
+    console.log(`Ready! Logged in as ${client.user.tag}`)
+    await messageDB.reset()
   } else {
     console.error(
       `User ${client.user.tag} does not have ManageWebhook permission`
-    );
+    )
     await client.destroy()
   }
 }
@@ -196,35 +196,35 @@ export const botTranslateSentMessage = (client: Client<boolean>) => async (
   message: OmitPartialGroupDMChannel<Message<boolean>>
 ) => {
   // ignore messages from bot or post through webhook 
-  if (message.author.bot || message.webhookId) { return; }
+  if (message.author.bot || message.webhookId) { return }
 
   try {
     // get the target channel to which this bot sends a translation result
-    const target = await channelDB.getTargetChannel(message.channelId);
-    const targetChannel = await client.channels.fetch(target.channelID);
+    const target = await channelDB.getTargetChannel(message.channelId)
+    const targetChannel = await client.channels.fetch(target.channelID)
 
     // reject non-TextChannel
-    if (!isTextChannel(targetChannel!)) { return; }
+    if (!isTextChannel(targetChannel!)) { return }
 
-    const content = message.content;
+    const content = message.content
     const attachedFiles = [...message.attachments.values()]
       .map((attachment) => ({
         attachment: attachment.url,
         name: attachment.name
-      }));
+      }))
 
     // does not send empty message
     if (content.length === 0 && attachedFiles.length === 0) {
-      return;
+      return
     }
 
     // sending with copying author
     const displayName =
       message.member?.displayName ??
-      message.author.displayName;
+      message.author.displayName
     const avatarURL =
       message.member?.displayAvatarURL() ??
-      message.author.displayAvatarURL();
+      message.author.displayAvatarURL()
 
     const rowID = await messageDB.enqueue(
       target.channelID,
@@ -232,20 +232,20 @@ export const botTranslateSentMessage = (client: Client<boolean>) => async (
       JSON.stringify(attachedFiles),
       displayName,
       avatarURL
-    );
+    )
 
-    if (!rowID) { return; }
+    if (!rowID) { return }
 
     // get translation result
     const translatedRes = (hasURL(content) || content.length === 0)
       ? content
-      : await translate(content, target.direction);
+      : await translate(content, target.direction)
 
-    await messageDB.setTranslatedContent(rowID, translatedRes);
-    await sendTranslatedContent(targetChannel);
+    await messageDB.setTranslatedContent(rowID, translatedRes)
+    await sendTranslatedContent(targetChannel)
   } catch (err) {
-    if (err instanceof NotTargetChannel) { return; }
-    console.error("Failed to forward message: \n", err);
+    if (err instanceof NotTargetChannel) { return }
+    console.error("Failed to forward message: \n", err)
   }
 }
 
@@ -254,16 +254,16 @@ export const botTranslateSentMessage = (client: Client<boolean>) => async (
 // build a translate command in context menu
 export const translateMessageCommand = new ContextMenuCommandBuilder()
   .setName("translate")
-  .setType(ApplicationCommandType.Message);
+  .setType(ApplicationCommandType.Message)
 
 // translate messages if it selected by context menu
 export const botTranslateReplybyCommand = async (
   interaction: Interaction
 ) => {
-  if (!interaction.isMessageContextMenuCommand()) { return; }
+  if (!interaction.isMessageContextMenuCommand()) { return }
 
-  const message = interaction.targetMessage;
-  if (message.content.length === 0) { return; }
+  const message = interaction.targetMessage
+  if (message.content.length === 0) { return }
 
   // const commandName = interaction.commandName;
   // const dir: TranslationDirection | null =
@@ -272,21 +272,21 @@ export const botTranslateReplybyCommand = async (
   // if (!dir) { return; }
 
   // direction does not used 
-  const dir: TranslationDirection = "ja-to-en";
+  const dir: TranslationDirection = "ja-to-en"
 
   await interaction.deferReply({
     flags: MessageFlags.Ephemeral
-  });
+  })
 
-  const translatedRes = await translate(message.content, dir);
-  await interaction.editReply(translatedRes);
+  const translatedRes = await translate(message.content, dir)
+  await interaction.editReply(translatedRes)
 }
 
 // transate messages, if it has been reacted by specific emoji
 export const botTranslateEmojiMessage = async (
   reaction: MessageReaction | PartialMessageReaction,
   _user: User | PartialUser) => {
-  if (reaction.partial) { await reaction.fetch(); }
+  if (reaction.partial) { await reaction.fetch() }
 
   const translationDirection: TranslationDirection | null =
     (reaction.emoji.name === "\u{1F1EF}\u{1F1F5}")
@@ -294,20 +294,20 @@ export const botTranslateEmojiMessage = async (
       : (
         reaction.emoji.name === "\u{1F1EC}\u{1F1E7}" ||
         reaction.emoji.name === "\u{1F1FA}\u{1F1F8}"
-      ) ? "ja-to-en" : null;
-  if (!translationDirection) { return; }
+      ) ? "ja-to-en" : null
+  if (!translationDirection) { return }
 
   const message = reaction.message.partial
     ? await reaction.message.fetch()
-    : reaction.message;
+    : reaction.message
 
-  if (message.content.length === 0) { return; }
+  if (message.content.length === 0) { return }
 
-  const targetChannel = message.channel;
-  if (!targetChannel.isSendable()) { return; }
+  const targetChannel = message.channel
+  if (!targetChannel.isSendable()) { return }
 
   // get translation result
-  const translatedRes = await translate(message.content, translationDirection);
+  const translatedRes = await translate(message.content, translationDirection)
 
   await targetChannel.send({
     content: translatedRes,

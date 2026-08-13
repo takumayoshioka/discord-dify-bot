@@ -1,4 +1,4 @@
-import z from "zod";
+import z from "zod"
 
 // required JSON format
 const jsonTranslationRequest = z.object({
@@ -19,9 +19,9 @@ const jsonAttachmentFile = z.object({
 
 const jsonAttachmentFiles = z.array(jsonAttachmentFile)
 
-type JsonTranslationRequest = z.infer<typeof jsonTranslationRequest>;
-type JsonTranslationResponse = z.infer<typeof jsonTranslationResponse>;
-type JsonAttachmentFiles = z.infer<typeof jsonAttachmentFiles>;
+type JsonTranslationRequest = z.infer<typeof jsonTranslationRequest>
+type JsonTranslationResponse = z.infer<typeof jsonTranslationResponse>
+type JsonAttachmentFiles = z.infer<typeof jsonAttachmentFiles>
 
 export const createTranslationRequest = (message: string)
   : JsonTranslationRequest => {
@@ -43,33 +43,33 @@ export const createTranslationResponse = (message: string)
 export const getTranslationRequestMessage = (
   request: JsonTranslationRequest
 ) => {
-  return request.query;
+  return request.query
 }
 
 export const getTranslationResponseMessage = (
   request: JsonTranslationResponse
 ) => {
-  return request.answer;
+  return request.answer
 }
 
 export const parseTranslationRequest = (json: string)
   : JsonTranslationRequest => {
   try {
-    const parsed = jsonTranslationRequest.parse(JSON.parse(json));
-    return parsed;
+    const parsed = jsonTranslationRequest.parse(JSON.parse(json))
+    return parsed
   } catch (err) {
     if (err instanceof SyntaxError) {
       throw new Error(
         `Translation API request took invalid JSON.\n
         ${json}`
-      );
+      )
     } else if (err instanceof z.ZodError) {
       throw new Error(
         `Translation API request does not match the expected format.\n
         ${json}`
-      );
+      )
     } else {
-      throw err;
+      throw err
     }
   }
 }
@@ -77,16 +77,16 @@ export const parseTranslationRequest = (json: string)
 export const parseTranslationResponse = (json: string)
   : JsonTranslationResponse => {
   try {
-    const parsed = jsonTranslationResponse.parse(JSON.parse(json));
-    return parsed;
+    const parsed = jsonTranslationResponse.parse(JSON.parse(json))
+    return parsed
   } catch (err) {
     if (err instanceof SyntaxError) {
       throw new Error(
         `Translation API response is invalid JSON.\n
         ${json}`
-      );
+      )
     } else {
-      throw err;
+      throw err
     }
   }
 }
@@ -94,21 +94,21 @@ export const parseTranslationResponse = (json: string)
 export const parseAttachmentFiles = (json: string)
   : JsonAttachmentFiles => {
   try {
-    const parsed = jsonAttachmentFiles.parse(JSON.parse(json));
-    return parsed;
+    const parsed = jsonAttachmentFiles.parse(JSON.parse(json))
+    return parsed
   } catch (err) {
     if (err instanceof SyntaxError) {
       throw new Error(
         `Attachment file(s) are invalid JSON.\n
         ${json}`
-      );
+      )
     } else if (err instanceof z.ZodError) {
       throw new Error(
         `Attachment file(s) does not match the expected format.\n
         ${json}`
-      );
+      )
     } else {
-      throw err;
+      throw err
     }
   }
 }

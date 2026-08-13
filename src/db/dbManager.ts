@@ -8,7 +8,7 @@ import {
   openMessageDB,
   messageDBOperations,
 } from "#src/db/messageDB"
-import { rm, glob } from "node:fs/promises";
+import { rm, glob } from "node:fs/promises"
 
 // export type and error
 export {
@@ -20,7 +20,7 @@ export {
 
 const DATABASE_PATH = join(
   process.cwd(), "db"
-);
+)
 const CHANNEL_DATABASE_PATH = join(
   DATABASE_PATH, "ChannelDB.sqlite"
 )
@@ -33,11 +33,11 @@ const MSG_DATABASE_PATH_RM = join(
 )
 
 for await (const file of glob(MSG_DATABASE_PATH_RM)) {
-  await rm(file, { force: true });
+  await rm(file, { force: true })
 }
 
-const rawChannelDB = await openChannelDB(CHANNEL_DATABASE_PATH);
-const rawMsgDB = await openMessageDB(MSG_DATABASE_PATH);
+const rawChannelDB = await openChannelDB(CHANNEL_DATABASE_PATH)
+const rawMsgDB = await openMessageDB(MSG_DATABASE_PATH)
 
-export const channelDB = channelDBOperations(rawChannelDB);
-export const messageDB = messageDBOperations(rawMsgDB);
+export const channelDB = channelDBOperations(rawChannelDB)
+export const messageDB = messageDBOperations(rawMsgDB)

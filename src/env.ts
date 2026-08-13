@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod"
 
 const envSchema = z.object({
   APP_ENV: z.enum(["mock", "production"]),
@@ -17,6 +17,6 @@ const envSchema = z.object({
       message: "DIFY_API_KEY is required when APP_ENV is production"
     })
   }
-});
+})
 
 export const env = envSchema.parse(process.env)

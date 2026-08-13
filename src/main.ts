@@ -4,16 +4,16 @@ import {
   GatewayIntentBits,
   Partials,
   Routes,
-} from "discord.js";
+} from "discord.js"
 
-import { env } from "#src/env";
+import { env } from "#src/env"
 import {
   botLogin,
   botTranslateSentMessage,
   translateMessageCommand,
   botTranslateReplybyCommand,
   botTranslateEmojiMessage,
-} from "#src/translationBot";
+} from "#src/translationBot"
 import {
   connectCommand,
   disconnectCommand,
@@ -22,11 +22,11 @@ import {
   showAllCommand,
   resetChDBCommand,
   resetMsgDBCommand,
-} from "#src/slashCommands";
-import { channelDB, messageDB } from "#src/db/dbManager";
+} from "#src/slashCommands"
+import { channelDB, messageDB } from "#src/db/dbManager"
 
-await channelDB.init();
-await messageDB.init();
+await channelDB.init()
+await messageDB.init()
 
 const client: Client = new Client({
   intents: [
@@ -40,17 +40,17 @@ const client: Client = new Client({
     Partials.Message,
     Partials.Reaction
   ]
-});
+})
 
 // login message
-client.once(Events.ClientReady, botLogin);
-client.on(Events.MessageCreate, botTranslateSentMessage(client));
-client.on(Events.InteractionCreate, botTranslateReplybyCommand);
-client.on(Events.MessageReactionAdd, botTranslateEmojiMessage);
-client.on(Events.InteractionCreate, botConnectionCommandsInteraction);
+client.once(Events.ClientReady, botLogin)
+client.on(Events.MessageCreate, botTranslateSentMessage(client))
+client.on(Events.InteractionCreate, botTranslateReplybyCommand)
+client.on(Events.MessageReactionAdd, botTranslateEmojiMessage)
+client.on(Events.InteractionCreate, botConnectionCommandsInteraction)
 
 // login
-await client.login(env.DISCORD_TOKEN);
+await client.login(env.DISCORD_TOKEN)
 
 // set slash command
 await client.rest.put(
