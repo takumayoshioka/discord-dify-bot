@@ -6,6 +6,9 @@ import {
 import {
   MessageDB
 } from "#src/db/message"
+import {
+  DajareDB
+} from "#src/db/dajare"
 import { rm, glob } from "node:fs/promises"
 
 // export type and error
@@ -15,6 +18,11 @@ export {
   ChannelConnectionFailure,
   ChannelDisconnectionFailure
 } from "#src/db/connect"
+export {
+  NotDajareChannel,
+  DajareSetFailure,
+  DajareRemoveFailure
+} from "#src/db/dajare"
 
 const DATABASE_PATH = join(
   process.cwd(), "db"
@@ -35,4 +43,5 @@ for await (const file of glob(MSG_DATABASE_PATH_RM)) {
 }
 
 export const connectDB = await ConnectDB.open(CHANNEL_DATABASE_PATH)
+export const dajareDB = await DajareDB.open(CHANNEL_DATABASE_PATH)
 export const messageDB = await MessageDB.open(MSG_DATABASE_PATH)

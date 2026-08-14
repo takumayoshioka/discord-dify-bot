@@ -8,11 +8,11 @@ import {
 
 import { env } from "#src/env"
 import {
-  botLogin,
-  botTranslateSentMessage,
+  translationBotLogin,
+  translationBotTransferMessage,
   translateMessageCommand,
-  botTranslateReplybyCommand,
-  botTranslateEmojiMessage,
+  translationBotReplyCommand,
+  transaltionBotReplyByEmoji,
 } from "#src/translation/bot"
 import {
   connectCommand,
@@ -23,12 +23,15 @@ import {
   resetChDBCommand,
   resetMsgDBCommand,
 } from "#src/translation/slashCommands"
-import { connectDB, messageDB } from "#src/db/manager"
+import { dajareBotLogin, dajareBotReply } from "#src/dajare/bot"
+import { botDajareCommandsInteraction, removeCommand, resetDajareDBCommand, setCommand, showSetCommand } from "#src/dajare/slashCommands"
+import { connectDB, dajareDB, messageDB } from "#src/db/manager"
 
 await connectDB.init()
+await dajareDB.init()
 await messageDB.init()
 
-const client: Client = new Client({
+const translationClient: Client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
@@ -42,29 +45,58 @@ const client: Client = new Client({
   ]
 })
 
-// login message
-client.once(Events.ClientReady, botLogin)
-client.on(Events.MessageCreate, botTranslateSentMessage(client))
-client.on(Events.InteractionCreate, botTranslateReplybyCommand)
-client.on(Events.MessageReactionAdd, botTranslateEmojiMessage)
-client.on(Events.InteractionCreate, botConnectionCommandsInteraction)
+const dajareClient: Client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ]
+})
+
+// translation bot
+translationClient.once(Events.ClientReady, translationBotLogin)
+translationClient.on(Events.MessageCreate, translationBotTransferMessage(translationClient))
+translationClient.on(Events.InteractionCreate, translationBotReplyCommand)
+translationClient.on(Events.MessageReactionAdd, transaltionBotReplyByEmoji)
+
+// slash commands for translation
+translationClient.on(Events.InteractionCreate, botConnectionCommandsInteraction)
+const translationCommands = [
+  translateMessageCommand,
+  connectCommand,
+  disconnectCommand,
+  showTargetCommand,
+  showAllCommand,
+  resetChDBCommand,
+  resetMsgDBCommand
+].map((command) => command.toJSON())
+
+// dajare bot
+dajareClient.once(Events.ClientReady, dajareBotLogin)
+dajareClient.on(Events.MessageCreate, dajareBotReply)
+
+// slash commands
+dajareClient.on(Events.InteractionCreate, botDajareCommandsInteraction)
+const dajareCommands = [
+  setCommand,
+  removeCommand,
+  showSetCommand,
+  resetDajareDBCommand
+].map((command) => command.toJSON())
 
 // login
-await client.login(env.DISCORD_TOKEN)
+await translationClient.login(env.DISCORD_TOKEN_TRANS)
+await dajareClient.login(env.DISCORD_TOKEN_DAJARE)
 
 // set slash command
-await client.rest.put(
+await translationClient.rest.put(
   Routes.applicationGuildCommands(
-    env.DISCORD_APP_ID, env.DISCORD_GUILD_ID),
-  {
-    body: [
-      translateMessageCommand.toJSON(),
-      connectCommand.toJSON(),
-      disconnectCommand.toJSON(),
-      showTargetCommand.toJSON(),
-      showAllCommand.toJSON(),
-      resetChDBCommand.toJSON(),
-      resetMsgDBCommand.toJSON()
-    ]
-  }
+    env.DISCORD_APP_ID_TRANS, env.DISCORD_GUILD_ID),
+  { body: translationCommands }
+)
+
+await dajareClient.rest.put(
+  Routes.applicationGuildCommands(
+    env.DISCORD_APP_ID_DAJARE, env.DISCORD_GUILD_ID),
+  { body: dajareCommands }
 )

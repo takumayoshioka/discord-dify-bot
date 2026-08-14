@@ -6,7 +6,7 @@ import {
   parseResponse,
 } from "#src/dify/jsonFormat"
 
-export type ApiKeyKind = "translation"
+export type ApiKeyKind = "translation" | "dajare"
 
 const requestURL = "chat-messages"
 
@@ -17,7 +17,9 @@ export const getWorkflowURL = () => {
 const apiKeySwitch = (kind: ApiKeyKind) => {
   switch (kind) {
     case ("translation"):
-      return env.DIFY_API_KEY
+      return env.DIFY_API_KEY_TRANS
+    case ("dajare"):
+      return env.DIFY_API_KEY_TRANS
   }
 }
 

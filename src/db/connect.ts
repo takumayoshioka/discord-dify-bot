@@ -42,7 +42,7 @@ class ConnectDBImpl extends CoreDB<RawConnectDB> {
         .execute()
     } catch (err) {
       throw new Error(
-        `Failed to initialize message translation db`
+        `Failed to initialize channel connection db`
       )
     }
   }
