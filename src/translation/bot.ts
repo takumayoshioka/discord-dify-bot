@@ -24,7 +24,7 @@ import {
   difyRequest
 } from "#src/dify/difyURL"
 import {
-  channelDB,
+  connectDB,
   messageDB,
   type TranslationDirection,
   NotTargetChannel
@@ -149,7 +149,7 @@ export const botTranslateSentMessage = (client: Client<boolean>) => async (
 
   try {
     // get the target channel to which this bot sends a translation result
-    const target = await channelDB.getTargetChannel(message.channelId)
+    const target = await connectDB.getTargetChannel(message.channelId)
     const targetChannel = await client.channels.fetch(target.channelID)
 
     // reject non-TextChannel

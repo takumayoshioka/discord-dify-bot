@@ -23,9 +23,9 @@ import {
   resetChDBCommand,
   resetMsgDBCommand,
 } from "#src/translation/slashCommands"
-import { channelDB, messageDB } from "#src/db/manager"
+import { connectDB, messageDB } from "#src/db/manager"
 
-await channelDB.init()
+await connectDB.init()
 await messageDB.init()
 
 const client: Client = new Client({
