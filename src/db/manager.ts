@@ -3,11 +3,11 @@ import { join } from "node:path"
 import {
   openChannelDB,
   channelDBOperations,
-} from "#src/db/channelDB"
+} from "#src/db/channel"
 import {
   openMessageDB,
   messageDBOperations,
-} from "#src/db/messageDB"
+} from "#src/db/message"
 import { rm, glob } from "node:fs/promises"
 
 // export type and error
@@ -16,7 +16,7 @@ export {
   NotTargetChannel,
   ChannelConnectionFailure,
   ChannelDisconnectionFailure
-} from "#src/db/channelDB"
+} from "#src/db/channel"
 
 const DATABASE_PATH = join(
   process.cwd(), "db"

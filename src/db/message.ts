@@ -3,7 +3,7 @@ import {
   Kysely,
   NoResultError,
 } from "kysely"
-import { openDB } from "#src/db/commonDB"
+import { openDB } from "#src/db/common"
 
 const MSG_DB_TABLE = "translation_queue"
 

@@ -2,7 +2,7 @@ import {
   type Generated,
   Kysely,
 } from "kysely"
-import { openDB } from "#src/db/commonDB"
+import { openDB } from "#src/db/common"
 
 const CHANNEL_DB_TABLE = "channel_pair_queue"
 

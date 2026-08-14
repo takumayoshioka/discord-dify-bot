@@ -18,46 +18,24 @@ import {
 } from "discord.js"
 
 import {
-  createTranslationRequest,
-  getTranslationResponseMessage,
   parseAttachmentFiles,
-  parseTranslationResponse,
-} from "#src/jsonFormat"
+} from "#src/dify/jsonFormat"
 import {
-  getWorkflowURL,
-  createTranslationRequestHeader
-} from "#src/translationURL"
+  difyRequest
+} from "#src/dify/difyURL"
 import {
   channelDB,
   messageDB,
   type TranslationDirection,
   NotTargetChannel
-} from "#src/db/dbManager"
+} from "#src/db/manager"
 
 const isTextChannel = (channel: Channel): channel is TextChannel => {
   return channel instanceof TextChannel
 }
 
-class Timeout extends Error { };
-class HttpError extends Error { };
-
-// set timeout 
-const setTimeoutRace = <T>(
-  targetPromise: Promise<T>, timeout: number
-) => {
-  const timeoutPromise = new Promise<T>((_, reject) => {
-    setTimeout(() => {
-      reject(new Timeout(`Timeout: ${String(targetPromise)}`))
-    }, timeout)
-  })
-
-  return Promise.race([
-    targetPromise, timeoutPromise
-  ])
-}
-
 // return an additional prompt 
-const getTranslationDirectionMessage = (dir: TranslationDirection) => {
+const getAdditionalPrompt = (dir: TranslationDirection) => {
   return (() => {
     switch (dir) {
       case "ja-to-en":
@@ -68,47 +46,10 @@ const getTranslationDirectionMessage = (dir: TranslationDirection) => {
   })() + "\n翻訳するテキストは以下の通りです。\n"
 }
 
-// translation request
-const translateBody = async (message: string) => {
-  let response: Response
-  try {
-    response = await fetch(getWorkflowURL(), {
-      method: "POST",
-      headers: createTranslationRequestHeader(),
-      body: JSON.stringify(createTranslationRequest(message)),
-    })
-  } catch (_) {
-    throw new HttpError("Network error")
-  }
-
-  if (!response.ok) {
-    throw new HttpError(`${response.status}: ${response.statusText}`)
-  }
-
-  const rawBody = await response.text()
-  try {
-    const body = parseTranslationResponse(rawBody)
-    return getTranslationResponseMessage(body)
-  } catch (err) {
-    throw new Error(`Invalid response: \n${err}`)
-  }
-}
-
 const translate = async (message: string, dir: TranslationDirection) => {
-  try {
-    return await setTimeoutRace(
-      translateBody(getTranslationDirectionMessage(dir) + message),
-      15_000
-    )
-  } catch (err) {
-    if (err instanceof Timeout) {
-      return `[Server timeout] original message:\n${message}`
-    } else if (err instanceof HttpError) {
-      return `[${err.message}] original message:\n${message}`
-    } else {
-      return `[Unknown error] original message:\n${message}`
-    }
-  }
+  return await difyRequest(
+    "translation", getAdditionalPrompt(dir) + message
+  )
 }
 
 // webhooks cache
@@ -257,8 +198,6 @@ export const botTranslateSentMessage = (client: Client<boolean>) => async (
     console.error("Failed to forward message: \n", err)
   }
 }
-
-// ------------------------------------------------------------
 
 // build a translate command in context menu
 export const translateMessageCommand = new ContextMenuCommandBuilder()

@@ -12,7 +12,7 @@ import {
   ChannelConnectionFailure,
   ChannelDisconnectionFailure,
   NotTargetChannel,
-} from "#src/db/dbManager"
+} from "#src/db/manager"
 
 const CONNECT_COMMAND_NAME = "connect"
 const DISCONNECT_COMMAND_NAME = "disconnect"
