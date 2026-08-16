@@ -19,7 +19,7 @@ const apiKeySwitch = (kind: ApiKeyKind) => {
     case ("translation"):
       return env.DIFY_API_KEY_TRANS
     case ("dajare"):
-      return env.DIFY_API_KEY_TRANS
+      return env.DIFY_API_KEY_DAJARE
   }
 }
 
@@ -73,11 +73,9 @@ const difyRequestBody = async (
   if (!response.ok) {
     try {
       const errorResponse = parseErrorResponse(await response.text())
-      throw new HttpError(`
-        ${errorResponse.status}: ${errorResponse.code}\n
-        ${errorResponse.message}\n
-      `)
+      throw new HttpError(`${errorResponse.status}: ${errorResponse.code}`)
     } catch (err) {
+      if (err instanceof HttpError) { throw err }
       throw new HttpError(`${response.status}: ${response.statusText}`)
     }
   }

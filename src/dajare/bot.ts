@@ -54,5 +54,8 @@ export const dajareBotReply = async (
   // do not send empty message
   if (evaluateRes === NOT_DAJARE || evaluateRes.length === 0) { return }
 
-  await message.reply(evaluateRes)
+  await message.reply({
+    content: evaluateRes,
+    allowedMentions: { repliedUser: false }
+  })
 }
