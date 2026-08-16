@@ -13,6 +13,8 @@ import {
   dajareDB
 } from "#src/db/manager"
 
+const NOT_DAJARE = "NO"
+
 const isTextChannel = (channel: Channel): channel is TextChannel => {
   return channel instanceof TextChannel
 }
@@ -50,7 +52,7 @@ export const dajareBotReply = async (
   const evaluateRes = await evaluate(content)
 
   // do not send empty message
-  if (evaluateRes.length === 0) { return }
+  if (evaluateRes === NOT_DAJARE || evaluateRes.length === 0) { return }
 
   await message.reply(evaluateRes)
 }
