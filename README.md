@@ -1,12 +1,31 @@
-# Discord Translator between Two Channels with Dify
+# Discord Bot with Dify
 
-## What This Bot Can Do?
+## Reply Bot (in the `dajare` directory)
 
-### Message Translation
+### What This Bot Can Do
+
+#### Reply with Dify Responses
+
+This bot responds to messages in specified channels using a Dify chatflow.For example, if `dajare-ch` is configured as a target channel, the bot sends each message posted in `dajare-ch` to the Dify chatflow and replies with the chatflow's response. The bot is named `dajare` because the Dify chatflow it communicates with evaluates whether a message is a *dajare* (a Japanese pun).
+
+#### Slash Commands
+
+This bot provides slash commands for managing channel configuration.
+
+- Set a target channel: `/set-dajare-ch ch:[channel]`
+- Remove a target channel: `/remove-dajare-ch ch:[channel]`
+- Show all target channels: `/show-dajare-ch`
+- Remove all target channels: `/reset-dajare-ch`
+
+## Translator between Two Channels
+
+### What This Bot Can Do?
+
+#### Message Translation
 
 This bot translates a message using Dify chatflow. For example, suppose the channel random-ja is connected to random-en. This bot requests Dify chatflow to translate a message comes from random-ja. After that, this bot sends a translated response from Dify chatflow to random-en.
 
-### Slash Commands
+#### Slash Commands
 
 This bot provides slash commands regarding channel connections.
 
@@ -15,15 +34,15 @@ This bot provides slash commands regarding channel connections.
 - Show the channel corresponding to `[channel]` via `/show-target ch:[channel]`
 - Show all connected channels via `/show-all`
 
-### Translation Triggered by Emoji Reaction
+#### Translation Triggered by Emoji Reaction
 
 This bot replies a translated message if you reacts an original message with any of the following emoji: :flag_jp:, :flag_gb:, and :flag_us:.
 
-## How to Run Your Bot
+### How to Run Your Bot
 
 1. Install Docker
 1. Set your environment variables to `.env`
-    - Set `mock` or `production` to `APP_ENV`
+    - Set `production` to `APP_ENV`
     - Discord token
     - Discord application id
     - Discord guild id
@@ -43,6 +62,7 @@ This bot replies a translated message if you reacts an original message with any
 ### Develpment Build
 
 - Set `.env.dev`
+  - Set `mock` to `APP_ENV`
   - These enviroment variables do not include Dify API Key
   - Base URL is required to connect a local mock server
 - Run `npm run dev` or `make dev-up` to start bot
@@ -50,7 +70,7 @@ This bot replies a translated message if you reacts an original message with any
   - These process refer to `.env.dev`
   - Press Ctrl+C or run `make dev-down` to shutdown your bot
 
-### Start Mock Server
+#### Start Mock Server
 
 - Run `npm run mock`
   - This commands setup local server

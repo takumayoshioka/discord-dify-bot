@@ -115,7 +115,7 @@ const sendTranslatedContent = async (targetChannel: TextChannel) => {
 }
 
 // login 
-export const botLogin = async (client: Client<true>) => {
+export const translationBotLogin = async (client: Client<true>) => {
   // check bot permission
   const isPermission = client.guilds.cache.reduce(
     // this bot must have ManageWebhook permission
@@ -141,7 +141,7 @@ export const botLogin = async (client: Client<true>) => {
 }
 
 // translate messages sent only in TextChannel
-export const botTranslateSentMessage = (client: Client<boolean>) => async (
+export const translationBotTransferMessage = (client: Client<boolean>) => async (
   message: OmitPartialGroupDMChannel<Message<boolean>>
 ) => {
   // ignore messages from bot or post through webhook 
@@ -205,7 +205,7 @@ export const translateMessageCommand = new ContextMenuCommandBuilder()
   .setType(ApplicationCommandType.Message)
 
 // translate messages if it selected by context menu
-export const botTranslateReplybyCommand = async (
+export const translationBotReplyCommand = async (
   interaction: Interaction
 ) => {
   if (!interaction.isMessageContextMenuCommand()) { return }
@@ -228,7 +228,7 @@ export const botTranslateReplybyCommand = async (
 }
 
 // transate messages, if it has been reacted by specific emoji
-export const botTranslateEmojiMessage = async (
+export const transaltionBotReplyByEmoji = async (
   reaction: MessageReaction | PartialMessageReaction,
   _user: User | PartialUser) => {
   if (reaction.partial) { await reaction.fetch() }

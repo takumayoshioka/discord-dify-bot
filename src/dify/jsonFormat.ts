@@ -14,7 +14,6 @@ const difyResponse = z.object({
 
 const difyErrorResponse = z.object({
   code: z.string(),
-  message: z.string(),
   status: z.number()
 })
 
