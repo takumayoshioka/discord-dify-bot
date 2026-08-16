@@ -1,13 +1,12 @@
 import {
   type Generated,
-  Kysely,
   NoResultError,
 } from "kysely"
-import { openDB } from "#src/db/commonDB"
+import { type DB, CoreDB, openDB } from "#src/db/common"
 
 const MSG_DB_TABLE = "translation_queue"
 
-interface RawMsgDB {
+type RawMessageDB = {
   [MSG_DB_TABLE]: {
     id: Generated<number>,
     target_channel_id: string,
@@ -19,15 +18,15 @@ interface RawMsgDB {
   }
 }
 
-export const openMessageDB = openDB<RawMsgDB>
+class MessageDBImpl extends CoreDB<RawMessageDB> {
+  static open = async (path: string) => {
+    return new MessageDBImpl(await openDB(path), MSG_DB_TABLE)
+  }
 
-export const messageDBOperations = (
-  msgDB: Kysely<RawMsgDB>
-) => {
   // initialize DB
-  const init = async () => {
+  init = async () => {
     try {
-      await msgDB.schema
+      await this.db.schema
         .createTable(MSG_DB_TABLE)
         .ifNotExists()
         .addColumn("id", "integer", (col) => col.primaryKey())
@@ -45,13 +44,8 @@ export const messageDBOperations = (
     }
   }
 
-  // reset DB
-  const reset = async () => {
-    await msgDB.deleteFrom(MSG_DB_TABLE).execute()
-  }
-
   // enqueue row into DB without translated_content
-  const enqueue = async (
+  enqueue = async (
     target_channel_id: string,
     original_content: string,
     attachment_json: string,
@@ -59,7 +53,7 @@ export const messageDBOperations = (
     avatar_url: string
   ) => {
     try {
-      const insertedRow = await msgDB
+      const insertedRow = await this.db
         .insertInto(MSG_DB_TABLE)
         .values({
           target_channel_id,
@@ -74,7 +68,7 @@ export const messageDBOperations = (
       return insertedRow.id
     } catch (err) {
       if (err instanceof NoResultError) {
-        return null
+        return undefined
       } else {
         throw err
       }
@@ -82,7 +76,7 @@ export const messageDBOperations = (
   }
 
   // enqueue row into DB with all information
-  const enqueueAll = async (
+  enqueueAll = async (
     target_channel_id: string,
     original_content: string,
     translated_content: string,
@@ -91,7 +85,7 @@ export const messageDBOperations = (
     avatar_url: string
   ) => {
     try {
-      const insertedRow = await msgDB
+      const insertedRow = await this.db
         .insertInto(MSG_DB_TABLE)
         .values({
           target_channel_id,
@@ -114,10 +108,10 @@ export const messageDBOperations = (
   }
 
   // update translated content by id
-  const setTranslatedContent = async (
+  setTranslatedContent = async (
     id: number, translated_content: string
   ) => {
-    await msgDB
+    await this.db
       .updateTable("translation_queue")
       .set({ translated_content })
       .where("id", "==", id)
@@ -125,10 +119,10 @@ export const messageDBOperations = (
   }
 
   // returns translated result (or null) by channel ID 
-  const getTranslatedContent = async (
+  getTranslatedContent = async (
     target_channel_id: string
   ) => {
-    return await msgDB
+    return await this.db
       .selectFrom(MSG_DB_TABLE)
       .selectAll()
       .where("target_channel_id", "==", target_channel_id)
@@ -138,22 +132,14 @@ export const messageDBOperations = (
   }
 
   // delete already sent content
-  const dequeue = async (
+  dequeue = async (
     id: number
   ) => {
-    await msgDB
+    await this.db
       .deleteFrom(MSG_DB_TABLE)
       .where("id", "==", id)
       .execute()
   }
-
-  return {
-    init,
-    reset,
-    enqueue,
-    enqueueAll,
-    setTranslatedContent,
-    getTranslatedContent,
-    dequeue
-  }
 }
+
+export const MessageDB: DB<RawMessageDB, MessageDBImpl> = MessageDBImpl

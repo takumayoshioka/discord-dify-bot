@@ -13,7 +13,7 @@ import {
   translateMessageCommand,
   botTranslateReplybyCommand,
   botTranslateEmojiMessage,
-} from "#src/translationBot"
+} from "#src/translation/bot"
 import {
   connectCommand,
   disconnectCommand,
@@ -22,10 +22,10 @@ import {
   showAllCommand,
   resetChDBCommand,
   resetMsgDBCommand,
-} from "#src/slashCommands"
-import { channelDB, messageDB } from "#src/db/dbManager"
+} from "#src/translation/slashCommands"
+import { connectDB, messageDB } from "#src/db/manager"
 
-await channelDB.init()
+await connectDB.init()
 await messageDB.init()
 
 const client: Client = new Client({

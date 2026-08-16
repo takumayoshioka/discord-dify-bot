@@ -7,12 +7,12 @@ import {
 } from "discord.js"
 
 import {
-  channelDB,
+  connectDB,
   messageDB,
   ChannelConnectionFailure,
   ChannelDisconnectionFailure,
   NotTargetChannel,
-} from "#src/db/dbManager"
+} from "#src/db/manager"
 
 const CONNECT_COMMAND_NAME = "connect"
 const DISCONNECT_COMMAND_NAME = "disconnect"
@@ -101,7 +101,7 @@ const interactionConnect = async (
   }
   await interaction.deferReply()
   try {
-    await channelDB.enqueue(jaChannel.id, enChannel.id)
+    await connectDB.enqueue(jaChannel.id, enChannel.id)
     await interaction.editReply("Connected.")
   } catch (err) {
     if (err instanceof ChannelConnectionFailure) {
@@ -127,7 +127,7 @@ const interactionDisconnect = async (
   }
   await interaction.deferReply()
   try {
-    await channelDB.dequeue(jaChannel.id, enChannel.id)
+    await connectDB.dequeue(jaChannel.id, enChannel.id)
     await interaction.editReply("Disconnected.")
   } catch (err) {
     if (err instanceof ChannelDisconnectionFailure) {
@@ -148,7 +148,7 @@ const interactionShowTarget = async (
   }
   await interaction.deferReply()
   try {
-    const dstChannel = await channelDB.getTargetChannel(srcChannel.id)
+    const dstChannel = await connectDB.getTargetChannel(srcChannel.id)
     await interaction.editReply(`Target channel is <#${dstChannel.channelID}>`)
   } catch (err) {
     if (err instanceof NotTargetChannel) {
@@ -165,7 +165,7 @@ const interactionShowAll = async (
   interaction: ChatInputCommandInteraction
 ) => {
   await interaction.deferReply()
-  const channelPairs = await channelDB.getAll()
+  const channelPairs = await connectDB.getAll()
   const channelPairTexts: string[] = []
   for (const { ja_channel_id, en_channel_id } of channelPairs) {
     channelPairTexts.push(
@@ -182,7 +182,7 @@ const interactionResetChDB = async (
   interaction: ChatInputCommandInteraction
 ) => {
   await interaction.deferReply()
-  await channelDB.reset()
+  await connectDB.reset()
   await interaction.editReply("Channel DB cleared")
 }
 

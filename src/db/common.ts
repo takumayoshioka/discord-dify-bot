@@ -38,3 +38,21 @@ export const openDB = async <DB>(path: string) => {
     })
   })
 }
+
+export type DB<RawDB, OpenedDB extends CoreDB<RawDB>> = {
+  open: (path: string) => Promise<OpenedDB>
+}
+
+export abstract class CoreDB<RawDB> {
+  constructor(
+    protected readonly db: Kysely<RawDB>,
+    protected readonly tableName: keyof RawDB & string
+  ) { }
+
+  reset = async () => {
+    await this.db.deleteFrom(this.tableName).execute()
+  }
+
+  abstract enqueue: (...items: never[]) => Promise<unknown>
+  abstract dequeue: (...items: never[]) => Promise<unknown>
+}

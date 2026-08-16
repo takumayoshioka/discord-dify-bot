@@ -1,13 +1,12 @@
 import {
   type Generated,
-  Kysely,
 } from "kysely"
-import { openDB } from "#src/db/commonDB"
+import { type DB, openDB, CoreDB } from "#src/db/common"
 
-const CHANNEL_DB_TABLE = "channel_pair_queue"
+const CONNECT_DB_TABLE = "channel_pair_queue"
 
-interface RawChannelDB {
-  [CHANNEL_DB_TABLE]: {
+type RawConnectDB = {
+  [CONNECT_DB_TABLE]: {
     id: Generated<number>,
     ja_channel_id: string,
     en_channel_id: string,
@@ -26,16 +25,16 @@ export type TranslationTarget = {
   direction: TranslationDirection
 }
 
-export const openChannelDB = openDB<RawChannelDB>
+class ConnectDBImpl extends CoreDB<RawConnectDB> {
+  static open = async (path: string) => {
+    return new ConnectDBImpl(await openDB(path), CONNECT_DB_TABLE)
+  }
 
-export const channelDBOperations = (
-  channelDB: Kysely<RawChannelDB>
-) => {
   // initialize DB
-  const init = async () => {
+  init = async () => {
     try {
-      await channelDB.schema
-        .createTable(CHANNEL_DB_TABLE)
+      await this.db.schema
+        .createTable(CONNECT_DB_TABLE)
         .ifNotExists()
         .addColumn("id", "integer", (col) => col.primaryKey())
         .addColumn("ja_channel_id", "text", (col) => col.notNull())
@@ -48,17 +47,13 @@ export const channelDBOperations = (
     }
   }
 
-  const reset = async () => {
-    await channelDB.deleteFrom(CHANNEL_DB_TABLE).execute()
-  }
-
   // return pair opponent 
-  const getTargetChannel = async (
+  getTargetChannel = async (
     channelID: string
   ): Promise<TranslationTarget> => {
     const targetChannelIDDir =
-      await channelDB
-        .selectFrom(CHANNEL_DB_TABLE)
+      await this.db
+        .selectFrom(CONNECT_DB_TABLE)
         .where((exp) =>
           exp.or([
             exp("ja_channel_id", "==", channelID),
@@ -90,12 +85,12 @@ export const channelDBOperations = (
   }
 
   // enqueue row into DB
-  const enqueue = async (
+  enqueue = async (
     ja_channel_id: string,
     en_channel_id: string,
   ) => {
-    const existingPair = await channelDB
-      .selectFrom(CHANNEL_DB_TABLE)
+    const existingPair = await this.db
+      .selectFrom(CONNECT_DB_TABLE)
       .selectAll()
       .where((exp) =>
         exp.or([
@@ -109,19 +104,16 @@ export const channelDBOperations = (
       throw new ChannelConnectionFailure
     }
 
-    await channelDB
-      .insertInto(CHANNEL_DB_TABLE)
+    await this.db
+      .insertInto(CONNECT_DB_TABLE)
       .values({ ja_channel_id, en_channel_id })
       .execute()
   }
 
   // delete already sent content
-  const dequeue = async (
-    ja_channel_id: string,
-    en_channel_id: string,
-  ) => {
-    const deleteRes = await channelDB
-      .deleteFrom(CHANNEL_DB_TABLE)
+  dequeue = async (ja_channel_id: string, en_channel_id: string) => {
+    const deleteRes = await this.db
+      .deleteFrom(CONNECT_DB_TABLE)
       .where((exp) =>
         exp.or([
           exp.and([
@@ -141,9 +133,9 @@ export const channelDBOperations = (
   }
 
   // return all channel pairs
-  const getAll = async () => {
-    const table = await channelDB
-      .selectFrom(CHANNEL_DB_TABLE)
+  getAll = async () => {
+    const table = await this.db
+      .selectFrom(CONNECT_DB_TABLE)
       .selectAll()
       .execute()
 
@@ -151,13 +143,6 @@ export const channelDBOperations = (
       return { ja_channel_id, en_channel_id }
     })
   }
-
-  return {
-    init,
-    reset,
-    getTargetChannel,
-    getAll,
-    enqueue,
-    dequeue,
-  }
 }
+
+export const ConnectDB: DB<RawConnectDB, ConnectDBImpl> = ConnectDBImpl

@@ -1,30 +1,36 @@
 import z from "zod"
 
 // required JSON format
-const jsonTranslationRequest = z.object({
+const difyRequest = z.object({
   query: z.string(),
   inputs: z.record(z.string(), z.unknown()),
   response_mode: z.string(),
   user: z.string().min(1)
 })
 
-const jsonTranslationResponse = z.object({
+const difyResponse = z.object({
   answer: z.string().min(1)
 })
 
-const jsonAttachmentFile = z.object({
+const difyErrorResponse = z.object({
+  code: z.string(),
+  message: z.string(),
+  status: z.number()
+})
+
+const attachmentFile = z.object({
   attachment: z.url(),
   name: z.string()
 })
 
-const jsonAttachmentFiles = z.array(jsonAttachmentFile)
+const jsonAttachmentFiles = z.array(attachmentFile)
 
-type JsonTranslationRequest = z.infer<typeof jsonTranslationRequest>
-type JsonTranslationResponse = z.infer<typeof jsonTranslationResponse>
+type JsonRequest = z.infer<typeof difyRequest>
+type JsonResponse = z.infer<typeof difyResponse>
+type JsonErrorResponse = z.infer<typeof difyErrorResponse>
 type JsonAttachmentFiles = z.infer<typeof jsonAttachmentFiles>
 
-export const createTranslationRequest = (message: string)
-  : JsonTranslationRequest => {
+export const createRequest = (message: string): JsonRequest => {
   return {
     query: message,
     inputs: {},
@@ -33,29 +39,27 @@ export const createTranslationRequest = (message: string)
   }
 }
 
-export const createTranslationResponse = (message: string)
-  : JsonTranslationResponse => {
+export const createResponse = (message: string): JsonResponse => {
   return {
     answer: message,
   }
 }
 
-export const getTranslationRequestMessage = (
-  request: JsonTranslationRequest
+export const getRequest = (
+  request: JsonRequest
 ) => {
   return request.query
 }
 
-export const getTranslationResponseMessage = (
-  request: JsonTranslationResponse
+export const getResponseMessage = (
+  request: JsonResponse
 ) => {
   return request.answer
 }
 
-export const parseTranslationRequest = (json: string)
-  : JsonTranslationRequest => {
+export const parseRequest = (json: string): JsonRequest => {
   try {
-    const parsed = jsonTranslationRequest.parse(JSON.parse(json))
+    const parsed = difyRequest.parse(JSON.parse(json))
     return parsed
   } catch (err) {
     if (err instanceof SyntaxError) {
@@ -74,10 +78,25 @@ export const parseTranslationRequest = (json: string)
   }
 }
 
-export const parseTranslationResponse = (json: string)
-  : JsonTranslationResponse => {
+export const parseResponse = (json: string): JsonResponse => {
   try {
-    const parsed = jsonTranslationResponse.parse(JSON.parse(json))
+    const parsed = difyResponse.parse(JSON.parse(json))
+    return parsed
+  } catch (err) {
+    if (err instanceof SyntaxError) {
+      throw new Error(
+        `Translation API response is invalid JSON.\n
+        ${json}`
+      )
+    } else {
+      throw err
+    }
+  }
+}
+
+export const parseErrorResponse = (json: string): JsonErrorResponse => {
+  try {
+    const parsed = difyErrorResponse.parse(JSON.parse(json))
     return parsed
   } catch (err) {
     if (err instanceof SyntaxError) {

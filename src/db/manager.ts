@@ -1,13 +1,11 @@
 import { join } from "node:path"
 
 import {
-  openChannelDB,
-  channelDBOperations,
-} from "#src/db/channelDB"
+  ConnectDB
+} from "#src/db/connect"
 import {
-  openMessageDB,
-  messageDBOperations,
-} from "#src/db/messageDB"
+  MessageDB
+} from "#src/db/message"
 import { rm, glob } from "node:fs/promises"
 
 // export type and error
@@ -16,7 +14,7 @@ export {
   NotTargetChannel,
   ChannelConnectionFailure,
   ChannelDisconnectionFailure
-} from "#src/db/channelDB"
+} from "#src/db/connect"
 
 const DATABASE_PATH = join(
   process.cwd(), "db"
@@ -36,8 +34,5 @@ for await (const file of glob(MSG_DATABASE_PATH_RM)) {
   await rm(file, { force: true })
 }
 
-const rawChannelDB = await openChannelDB(CHANNEL_DATABASE_PATH)
-const rawMsgDB = await openMessageDB(MSG_DATABASE_PATH)
-
-export const channelDB = channelDBOperations(rawChannelDB)
-export const messageDB = messageDBOperations(rawMsgDB)
+export const connectDB = await ConnectDB.open(CHANNEL_DATABASE_PATH)
+export const messageDB = await MessageDB.open(MSG_DATABASE_PATH)
