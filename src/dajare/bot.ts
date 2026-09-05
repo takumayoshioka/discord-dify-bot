@@ -1,17 +1,20 @@
 import {
-  Client,
   Message,
   TextChannel,
+  Events,
   type Channel,
   type OmitPartialGroupDMChannel,
 } from "discord.js"
 
 import {
-  difyRequest
-} from "#src/dify/difyURL"
+  difyRequest,
+} from "#src/util/difyURL"
 import {
   dajareDB
 } from "#src/db/manager"
+import { CoreBot } from "#src/util/bot"
+import { botDajareCommandsInteraction, commands } from "#src/dajare/commands"
+import { type MessageErrorReport, difyErrorToMessageError } from "#src/util/messageError"
 
 const NOT_DAJARE = "NO"
 
@@ -23,39 +26,69 @@ const evaluate = async (message: string) => {
   return await difyRequest("dajare", message)
 }
 
-// login 
-export const dajareBotLogin = async (client: Client<true>) => {
-  console.log(`Ready! Logged in as ${client.user.tag}`)
-}
+export class DajareBot extends CoreBot<MessageErrorReport> {
+  setEventHandlers = () => {
+    this.client.once(Events.ClientReady, this.login)
+    this.client.on(Events.MessageCreate, this.dajareBotReply)
+    this.client.on(Events.InteractionCreate, botDajareCommandsInteraction)
+  }
 
-// translate messages sent only in TextChannel
-export const dajareBotReply = async (
-  message: OmitPartialGroupDMChannel<Message<boolean>>
-) => {
-  // ignore messages from bot or post through webhook 
-  if (message.author.bot || message.webhookId) { return }
+  commands = commands
 
-  // get the target channel to which this bot sends a translation result
-  const target = await dajareDB.checkTarget(message.channelId)
-  if (!target) { return }
-  const targetChannel = message.channel
+  errorReportToMessage = (report: MessageErrorReport) => {
+    const raw = (report.raw === undefined)
+      ? "" : `\n\`\`\`text\n${report.raw}\n\`\`\``
+    return `${report.name}: ${report.message}\nChannel: <#${report.channelID}>\nMessage Link: ${report.url}${raw}`
+  }
 
-  // reject non-TextChannel
-  if (!isTextChannel(targetChannel)) { return }
+  loginCallback = async () => { }
 
-  const content = message.content
+  dajareBotReply = async (
+    message: OmitPartialGroupDMChannel<Message<boolean>>
+  ) => {
+    // ignore messages from bot or post through webhook 
+    if (message.author.bot || message.webhookId) { return }
 
-  // does not send empty request
-  if (content.length === 0) { return }
+    // get the target channel to which this bot sends a translation result
+    const target = await dajareDB.checkTarget(message.channelId)
+    if (!target) { return }
+    const targetChannel = message.channel
 
-  // get evaluation result
-  const evaluateRes = await evaluate(content)
+    // reject non-TextChannel
+    if (!isTextChannel(targetChannel)) { return }
 
-  // do not send empty message
-  if (evaluateRes === NOT_DAJARE || evaluateRes.length === 0) { return }
+    const content = message.content
 
-  await message.reply({
-    content: evaluateRes,
-    allowedMentions: { repliedUser: false }
-  })
+    // does not send empty request
+    if (content.length === 0) { return }
+
+    // get evaluation result
+    const evaluateRes = await evaluate(content)
+
+    switch (evaluateRes.status) {
+      case ("Success"): {
+        const res = evaluateRes.result
+        // do not send empty message
+        if (res.length === 0) { return }
+
+        if (res === NOT_DAJARE) {
+          message.react("❌")
+          return
+        }
+
+        await message.reply({
+          content: res,
+          allowedMentions: { repliedUser: false }
+        })
+
+        break
+      }
+
+      case ("Failure"): {
+        await this.portErrorReport(
+          difyErrorToMessageError(evaluateRes.errorReport, message))
+        break
+      }
+    }
+  }
 }

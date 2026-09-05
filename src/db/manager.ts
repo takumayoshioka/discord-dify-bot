@@ -10,6 +10,7 @@ import {
   DajareDB
 } from "#src/db/dajare"
 import { rm, glob } from "node:fs/promises"
+import { ErrorDB } from "./error.js"
 
 // export type and error
 export {
@@ -23,6 +24,11 @@ export {
   DajareSetFailure,
   DajareRemoveFailure
 } from "#src/db/dajare"
+export {
+  NoErrorReportChannel,
+  ErrorSetFailure,
+  ErrorRemoveFailure
+} from "#src/db/error"
 
 const DATABASE_PATH = join(
   process.cwd(), "db"
@@ -44,4 +50,5 @@ for await (const file of glob(MSG_DATABASE_PATH_RM)) {
 
 export const connectDB = await ConnectDB.open(CHANNEL_DATABASE_PATH)
 export const dajareDB = await DajareDB.open(CHANNEL_DATABASE_PATH)
+export const errorDB = await ErrorDB.open(CHANNEL_DATABASE_PATH)
 export const messageDB = await MessageDB.open(MSG_DATABASE_PATH)

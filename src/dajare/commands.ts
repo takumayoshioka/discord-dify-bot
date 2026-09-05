@@ -19,7 +19,7 @@ const RESET_DAJARE_DB_COMMAND_NAME = "reset-dajare-ch"
 const SET_REMOVE_OPTION = { ch: "ch" }
 
 // connect/disconnect command builder
-export const setCommand = new SlashCommandBuilder()
+const setCommand = new SlashCommandBuilder()
   .setName(SET_COMMAND_NAME)
   .setDescription("Set dajare channel")
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
@@ -31,7 +31,7 @@ export const setCommand = new SlashCommandBuilder()
       .addChannelTypes(ChannelType.GuildText)
   )
 
-export const removeCommand = new SlashCommandBuilder()
+const removeCommand = new SlashCommandBuilder()
   .setName(REMOVE_COMMAND_NAME)
   .setDescription("Remove dajare channel")
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
@@ -43,14 +43,21 @@ export const removeCommand = new SlashCommandBuilder()
       .addChannelTypes(ChannelType.GuildText)
   )
 
-export const showSetCommand = new SlashCommandBuilder()
+const showSetCommand = new SlashCommandBuilder()
   .setName(SHOW_SET_COMMAND_NAME)
   .setDescription("Show dajare channel")
 
-export const resetDajareDBCommand = new SlashCommandBuilder()
+const resetDajareDBCommand = new SlashCommandBuilder()
   .setName(RESET_DAJARE_DB_COMMAND_NAME)
   .setDescription("Reset dajare setting")
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
+
+export const commands = [
+  setCommand,
+  removeCommand,
+  showSetCommand,
+  resetDajareDBCommand
+]
 
 const interactionSet = async (
   interaction: ChatInputCommandInteraction
@@ -150,7 +157,6 @@ export const botDajareCommandsInteraction = async (
     }
 
     default: {
-      console.error("Invalid command")
       return
     }
   }

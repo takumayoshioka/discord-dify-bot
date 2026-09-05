@@ -1,5 +1,7 @@
 import {
+  ApplicationCommandType,
   SlashCommandBuilder,
+  ContextMenuCommandBuilder,
   ChannelType,
   type Interaction,
   ChatInputCommandInteraction,
@@ -24,7 +26,7 @@ const CONNECT_DISCONNECT_OPTION = { ja: "ja", en: "en" }
 const SHOW_TARGET_OPTION = "ch"
 
 // connect/disconnect command builder
-export const connectCommand = new SlashCommandBuilder()
+const connectCommand = new SlashCommandBuilder()
   .setName(CONNECT_COMMAND_NAME)
   .setDescription("Connect ja/en channels")
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
@@ -43,7 +45,7 @@ export const connectCommand = new SlashCommandBuilder()
       .addChannelTypes(ChannelType.GuildText)
   )
 
-export const disconnectCommand = new SlashCommandBuilder()
+const disconnectCommand = new SlashCommandBuilder()
   .setName(DISCONNECT_COMMAND_NAME)
   .setDescription("Disconnect ja/en channels")
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
@@ -62,7 +64,7 @@ export const disconnectCommand = new SlashCommandBuilder()
       .addChannelTypes(ChannelType.GuildText)
   )
 
-export const showTargetCommand = new SlashCommandBuilder()
+const showTargetCommand = new SlashCommandBuilder()
   .setName(SHOW_TARGET_COMMAND_NAME)
   .setDescription("Show connected target channel")
   .addChannelOption((option) =>
@@ -73,18 +75,33 @@ export const showTargetCommand = new SlashCommandBuilder()
       .addChannelTypes(ChannelType.GuildText)
   )
 
-export const showAllCommand = new SlashCommandBuilder()
+const showAllCommand = new SlashCommandBuilder()
   .setName(SHOW_ALL_COMMAND_NAME)
   .setDescription("Show all connected channels")
 
-export const resetChDBCommand = new SlashCommandBuilder()
+const resetChDBCommand = new SlashCommandBuilder()
   .setName(RESET_CHANNEL_DB_COMMAND_NAME)
   .setDescription("Reset channel DB")
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
 
-export const resetMsgDBCommand = new SlashCommandBuilder()
+const resetMsgDBCommand = new SlashCommandBuilder()
   .setName(RESET_MESSAGE_DB_COMMAND_NAME)
   .setDescription("Reset message DB")
+
+// build a translate command in context menu
+const translateMessageCommand = new ContextMenuCommandBuilder()
+  .setName("translate")
+  .setType(ApplicationCommandType.Message)
+
+export const commands = [
+  translateMessageCommand,
+  connectCommand,
+  disconnectCommand,
+  showTargetCommand,
+  showAllCommand,
+  resetChDBCommand,
+  resetMsgDBCommand
+]
 
 const interactionConnect = async (
   interaction: ChatInputCommandInteraction
@@ -233,7 +250,6 @@ export const botConnectionCommandsInteraction = async (
     }
 
     default: {
-      console.error("Invalid command")
       return
     }
   }

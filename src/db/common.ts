@@ -53,6 +53,7 @@ export abstract class CoreDB<RawDB> {
     await this.db.deleteFrom(this.tableName).execute()
   }
 
+  abstract init: () => Promise<void>
   abstract enqueue: (...items: never[]) => Promise<unknown>
   abstract dequeue: (...items: never[]) => Promise<unknown>
 }

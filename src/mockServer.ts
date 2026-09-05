@@ -4,8 +4,9 @@ import {
   createResponse,
   getRequest,
   parseRequest
-} from "#src/dify/jsonFormat"
-import { getWorkflowURL } from "#src/dify/difyURL"
+} from "#src/util/jsonFormat"
+import { getWorkflowURL } from "#src/util/difyURL"
+import { unwrap } from "./util/result.js"
 
 const requestURL = getWorkflowURL()
 const host = requestURL.hostname
@@ -37,7 +38,7 @@ const server = createServer(async (request, response) => {
   const rawBody = Buffer.concat(chunks).toString("utf-8")
 
   try {
-    const body = parseRequest(rawBody)
+    const body = unwrap(parseRequest(rawBody))
     const translatedText = [...getRequest(body)].reverse().join("")
 
     response.writeHead(200, {

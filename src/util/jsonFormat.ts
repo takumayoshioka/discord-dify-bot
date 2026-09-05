@@ -1,4 +1,26 @@
+import type { Result } from "#src/util/result"
 import z from "zod"
+
+export type JSON_FORMAT_ERROR_NAME = "JSON_SYNTAX_ERROR" | "ZOD_ERROR"
+
+export type JsonResult<T> = Result<T, JsonFormatErrorReport>
+
+export type JsonFormatErrorReport = {
+  name: JSON_FORMAT_ERROR_NAME,
+  message: string,
+  raw: string
+}
+
+const jsonFormatHandler = (err: unknown, payload: string, raw: string)
+  : JsonFormatErrorReport => {
+  if (err instanceof SyntaxError) {
+    return { name: "JSON_SYNTAX_ERROR", message: payload, raw }
+  } else if (err instanceof z.ZodError) {
+    return { name: "ZOD_ERROR", message: payload, raw }
+  } else {
+    throw err
+  }
+}
 
 // required JSON format
 const difyRequest = z.object({
@@ -13,8 +35,9 @@ const difyResponse = z.object({
 })
 
 const difyErrorResponse = z.object({
+  status: z.number(),
+  message: z.string(),
   code: z.string(),
-  status: z.number()
 })
 
 const attachmentFile = z.object({
@@ -56,6 +79,49 @@ export const getResponseMessage = (
   return request.answer
 }
 
+const parserGenerator = <
+  T extends JsonRequest | JsonResponse | JsonErrorResponse | JsonAttachmentFiles
+>(format: z.ZodType<T>, json: string, payload: string)
+  : JsonResult<T> => {
+  try {
+    const parsed = format.parse(JSON.parse(json))
+    return {
+      status: "Success",
+      result: parsed
+    }
+  } catch (err) {
+    return {
+      status: "Failure",
+      errorReport: jsonFormatHandler(err, payload, json)
+    }
+  }
+}
+
+export const parseRequest = (json: string) => {
+  return parserGenerator(difyRequest, json, "parsing Request")
+}
+
+export const parseResponse = (json: string) => {
+  return parserGenerator(difyResponse, json, "parsing Dify Response")
+}
+
+export const parseErrorResponse = (json: string) => {
+  return parserGenerator(
+    difyErrorResponse,
+    json,
+    "parsing Dify Error Response"
+  )
+}
+
+export const parseAttachmentFiles = (json: string) => {
+  return parserGenerator(
+    jsonAttachmentFiles,
+    json,
+    "parsing JSON of Attachment Files"
+  )
+}
+
+/*
 export const parseRequest = (json: string): JsonRequest => {
   try {
     const parsed = difyRequest.parse(JSON.parse(json))
@@ -110,23 +176,18 @@ export const parseErrorResponse = (json: string): JsonErrorResponse => {
 }
 
 export const parseAttachmentFiles = (json: string)
-  : JsonAttachmentFiles => {
+  : JsonResult<JsonAttachmentFiles> => {
   try {
     const parsed = jsonAttachmentFiles.parse(JSON.parse(json))
-    return parsed
+    return {
+      status: "Success",
+      result: parsed
+    }
   } catch (err) {
-    if (err instanceof SyntaxError) {
-      throw new Error(
-        `Attachment file(s) are invalid JSON.\n
-        ${json}`
-      )
-    } else if (err instanceof z.ZodError) {
-      throw new Error(
-        `Attachment file(s) does not match the expected format.\n
-        ${json}`
-      )
-    } else {
-      throw err
+    return {
+      status: "Failure",
+      errorReport: jsonFormatHandler(err, "parsing AttachmentFiles")
     }
   }
 }
+*/
