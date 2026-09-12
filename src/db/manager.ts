@@ -9,13 +9,14 @@ import {
 import {
   DajareDB
 } from "#src/db/dajare"
+import {
+  ErrorDB
+} from "#src/db/error"
 import { rm, glob } from "node:fs/promises"
-import { ErrorDB } from "./error.js"
 
 // export type and error
 export {
   type TranslationDirection,
-  NotTargetChannel,
   ChannelConnectionFailure,
   ChannelDisconnectionFailure
 } from "#src/db/connect"

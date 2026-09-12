@@ -16,6 +16,7 @@ import {
 } from "discord.js"
 
 import {
+  JsonResultError,
   parseAttachmentFiles
 } from "#src/util/jsonFormat"
 import {
@@ -25,8 +26,7 @@ import {
 import {
   connectDB,
   messageDB,
-  type TranslationDirection,
-  NotTargetChannel,
+  type TranslationDirection
 } from "#src/db/manager"
 import { CoreBot } from "#src/util/bot"
 import { botConnectionCommandsInteraction, commands } from "./commands.js"
@@ -113,10 +113,7 @@ const sendTranslatedContentBody = async (targetChannel: TextChannel) => {
 
     case ("Failure"): {
       await messageDB.dequeue(row.id)
-      throw new Error(
-        `Json Format Error: ${files.errorReport.name}\n
-        cause: ${files.errorReport.message}`
-      )
+      throw new JsonResultError("Parsing Json Attachment", files.errorReport)
     }
   }
 }
@@ -132,18 +129,18 @@ const sendTranslatedContent = async (targetChannel: TextChannel) => {
 
 export class TranslationBot extends CoreBot<MessageErrorReport> {
   setEventHandlers = () => {
-    this.client.once(Events.ClientReady, this.login)
-    this.client.on(Events.MessageCreate, this.transferMessage)
-    this.client.on(Events.InteractionCreate, this.replyCommand)
-    this.client.on(Events.MessageReactionAdd, this.replyByEmoji)
-    this.client.on(Events.InteractionCreate, botConnectionCommandsInteraction)
+    this.client.once(Events.ClientReady, this.wrapper(this.login))
+    this.client.on(Events.MessageCreate, this.wrapper(this.transferMessage))
+    this.client.on(Events.InteractionCreate, this.wrapper(this.replyCommand))
+    this.client.on(Events.MessageReactionAdd, this.wrapper(this.replyByEmoji))
+    this.client.on(Events.InteractionCreate, this.wrapper(botConnectionCommandsInteraction))
   }
 
   commands = commands
 
   protected errorReportToMessage = (report: MessageErrorReport) => {
     const raw = (report.raw === undefined)
-      ? "" : `\n\`\`\`text\n${report.raw}\n\`\`\``
+      ? "" : `\n\`\`\`\n${report.raw}\n\`\`\``
     return `${report.name}: ${report.message}\nChannel: <#${report.channelID}>\nMessage Link: ${report.url}${raw}`
   }
 
@@ -181,72 +178,70 @@ export class TranslationBot extends CoreBot<MessageErrorReport> {
     // ignore messages from bot or post through webhook 
     if (message.author.bot || message.webhookId) { return }
 
-    try {
-      // get the target channel to which this bot sends a translation result
-      const target = await connectDB.getTargetChannel(message.channelId)
+    // get the target channel to which this bot sends a translation result
+    const target = await connectDB.getTargetChannel(message.channelId)
+    if (target === undefined) { return }
 
-      const targetChannel =
-        await this.client.channels.cache.get(target.channelID) ??
-        await this.client.channels.fetch(target.channelID)
+    const targetChannel =
+      await this.client.channels.cache.get(target.channelID) ??
+      await this.client.channels.fetch(target.channelID)
 
-      // reject non-TextChannel
-      if (!isTextChannel(targetChannel!)) { return }
+    // reject non-TextChannel
+    if (!isTextChannel(targetChannel!)) { return }
 
-      const content = message.content
-      const attachedFiles = [...message.attachments.values()]
-        .map((attachment) => ({
-          attachment: attachment.url,
-          name: attachment.name
-        }))
+    await this.updateTimestamp(message.createdTimestamp)
 
-      // does not send empty message
-      if (content.length === 0 && attachedFiles.length === 0) {
-        return
+    const content = message.content
+    const attachedFiles = [...message.attachments.values()]
+      .map((attachment) => ({
+        attachment: attachment.url,
+        name: attachment.name
+      }))
+
+    // does not send empty message
+    if (content.length === 0 && attachedFiles.length === 0) {
+      return
+    }
+
+    // sending with copying author
+    const displayName =
+      message.member?.displayName ??
+      message.author.displayName
+    const avatarURL =
+      message.member?.displayAvatarURL() ??
+      message.author.displayAvatarURL()
+
+    const rowID = await messageDB.enqueue(
+      target.channelID,
+      content,
+      JSON.stringify(attachedFiles),
+      displayName,
+      avatarURL
+    )
+
+    if (!rowID) { return }
+
+    // gets translation result
+    // does not translate it if it is empty
+    const translatedRes: DifyResult = (content.length === 0)
+      ? { status: "Success", result: content }
+      : await translate(content, target.direction)
+
+    switch (translatedRes.status) {
+      case ("Success"): {
+        await messageDB.setTranslatedContent(rowID, translatedRes.result)
+        await sendTranslatedContent(targetChannel)
+        break
       }
 
-      // sending with copying author
-      const displayName =
-        message.member?.displayName ??
-        message.author.displayName
-      const avatarURL =
-        message.member?.displayAvatarURL() ??
-        message.author.displayAvatarURL()
-
-      const rowID = await messageDB.enqueue(
-        target.channelID,
-        content,
-        JSON.stringify(attachedFiles),
-        displayName,
-        avatarURL
-      )
-
-      if (!rowID) { return }
-
-      // get translation result
-      // do not translate it if it is empty
-      const translatedRes: DifyResult = (content.length === 0)
-        ? { status: "Success", result: content }
-        : await translate(content, target.direction)
-
-      switch (translatedRes.status) {
-        case ("Success"): {
-          await messageDB.setTranslatedContent(rowID, translatedRes.result)
-          await sendTranslatedContent(targetChannel)
-          break
-        }
-
-        case ("Failure"): {
-          await this.portErrorReport({
-            ...translatedRes.errorReport,
-            channelID: message.channelId,
-            url: message.url
-          })
-          break
-        }
+      case ("Failure"): {
+        await this.portErrorReport({
+          ...translatedRes.errorReport,
+          channelID: message.channelId,
+          url: message.url
+        })
+        break
       }
-    } catch (err) {
-      if (err instanceof NotTargetChannel) { return }
-      await this.portErrorReport(`Failed to forward message:\n${err}`)
     }
   }
 
@@ -269,6 +264,8 @@ export class TranslationBot extends CoreBot<MessageErrorReport> {
       flags: MessageFlags.Ephemeral
     })
 
+    await this.updateTimestamp(interaction.createdTimestamp)
+
     const translatedRes = await translate(message.content, dir)
     switch (translatedRes.status) {
       case ("Success"): {
@@ -289,16 +286,16 @@ export class TranslationBot extends CoreBot<MessageErrorReport> {
   protected replyByEmoji = async (
     reaction: MessageReaction | PartialMessageReaction,
     _user: User | PartialUser) => {
-    if (reaction.partial) { await reaction.fetch() }
+    if (reaction.partial) { reaction = await reaction.fetch() }
 
-    const translationDirection: TranslationDirection | null =
+    const translationDirection =
       (reaction.emoji.name === "\u{1F1EF}\u{1F1F5}")
         ? "en-to-ja"
         : (
           reaction.emoji.name === "\u{1F1EC}\u{1F1E7}" ||
           reaction.emoji.name === "\u{1F1FA}\u{1F1F8}"
-        ) ? "ja-to-en" : null
-    if (!translationDirection) { return }
+        ) ? "ja-to-en" : undefined
+    if (translationDirection === undefined) { return }
 
     const message = reaction.message.partial
       ? await reaction.message.fetch()
@@ -308,6 +305,8 @@ export class TranslationBot extends CoreBot<MessageErrorReport> {
 
     const targetChannel = message.channel
     if (!targetChannel.isSendable()) { return }
+
+    await this.updateTimestamp(Date.now())
 
     // get translation result
     const translatedRes = await translate(message.content, translationDirection)

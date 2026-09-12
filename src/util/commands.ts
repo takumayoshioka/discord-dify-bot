@@ -12,6 +12,7 @@ import {
   errorDB,
   NoErrorReportChannel,
 } from "#src/db/manager"
+import { botError } from "#src/util/bot"
 
 const SET_COMMAND_NAME = "set-error-ch"
 const REMOVE_COMMAND_NAME = "remove-error-ch"
@@ -78,7 +79,7 @@ const interactionSet = async (
     if (err instanceof ErrorSetFailure) {
       await interaction.editReply("Set failure.")
     } else {
-      await interaction.editReply("[Bot internal error: set command]")
+      botError("set-error-ch command")
     }
   }
 }
@@ -90,7 +91,6 @@ const interactionDisconnect = async (
     SET_REMOVE_OPTION.ch
   )
   if (channel === null) {
-    console.error("Invalid channel")
     return
   }
   await interaction.deferReply()
@@ -101,7 +101,7 @@ const interactionDisconnect = async (
     if (err instanceof ErrorRemoveFailure) {
       await interaction.editReply("Removal failure.")
     } else {
-      await interaction.editReply("[Bot internal error: remove command]")
+      botError("remove-error-ch command")
     }
   }
 }
@@ -117,7 +117,7 @@ const interactionShowAll = async (
     if (err instanceof NoErrorReportChannel) {
       await interaction.editReply("No error report channel")
     } else {
-      await interaction.editReply("[Bot internal error: show command]")
+      botError("show-error-ch command")
     }
   }
 }

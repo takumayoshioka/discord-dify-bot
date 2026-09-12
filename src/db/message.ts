@@ -1,8 +1,7 @@
 import {
   type Generated,
-  NoResultError,
 } from "kysely"
-import { type DB, CoreDB, openDB } from "#src/db/common"
+import { type DB, CoreDB, dbError, openDB } from "#src/db/common"
 
 const MSG_DB_TABLE = "translation_queue"
 
@@ -38,9 +37,7 @@ class MessageDBImpl extends CoreDB<RawMessageDB> {
         .addColumn("avatar_url", "text")
         .execute()
     } catch (err) {
-      throw new Error(
-        `Failed to initialize message translation db`
-      )
+      dbError("initializing translation db")
     }
   }
 
@@ -52,27 +49,21 @@ class MessageDBImpl extends CoreDB<RawMessageDB> {
     display_name: string,
     avatar_url: string
   ) => {
-    try {
-      const insertedRow = await this.db
-        .insertInto(MSG_DB_TABLE)
-        .values({
-          target_channel_id,
-          original_content,
-          translated_content: null,
-          attachment_json,
-          display_name,
-          avatar_url
-        })
-        .returning("id")
-        .executeTakeFirstOrThrow()
-      return insertedRow.id
-    } catch (err) {
-      if (err instanceof NoResultError) {
-        return undefined
-      } else {
-        throw err
-      }
-    }
+    const insertedRow = await this.db
+      .insertInto(MSG_DB_TABLE)
+      .values({
+        target_channel_id,
+        original_content,
+        translated_content: null,
+        attachment_json,
+        display_name,
+        avatar_url
+      })
+      .returning("id")
+      .executeTakeFirst()
+
+    if (insertedRow === undefined) { return undefined }
+    return insertedRow.id
   }
 
   // enqueue row into DB with all information
@@ -84,27 +75,21 @@ class MessageDBImpl extends CoreDB<RawMessageDB> {
     display_name: string,
     avatar_url: string
   ) => {
-    try {
-      const insertedRow = await this.db
-        .insertInto(MSG_DB_TABLE)
-        .values({
-          target_channel_id,
-          original_content,
-          translated_content,
-          attachment_json,
-          display_name,
-          avatar_url
-        })
-        .returning("id")
-        .executeTakeFirstOrThrow()
-      return insertedRow.id
-    } catch (err) {
-      if (err instanceof NoResultError) {
-        return null
-      } else {
-        throw err
-      }
-    }
+    const insertedRow = await this.db
+      .insertInto(MSG_DB_TABLE)
+      .values({
+        target_channel_id,
+        original_content,
+        translated_content,
+        attachment_json,
+        display_name,
+        avatar_url
+      })
+      .returning("id")
+      .executeTakeFirst()
+
+    if (insertedRow === undefined) { return undefined }
+    return insertedRow.id
   }
 
   // update translated content by id

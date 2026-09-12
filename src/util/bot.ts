@@ -4,20 +4,48 @@ import {
   type Client,
   type SlashCommandOptionsOnlyBuilder
 } from "discord.js"
-import { type ErrorReport } from "#src/util/result"
+import { ResultError, type ErrorReport } from "#src/util/result"
 import { errorDB } from "#src/db/manager"
 import { botErrorCommandsInteraction, commands } from "#src/util/commands"
+import { DBError } from "#src/db/common"
+import { JsonResultError } from "#src/util/jsonFormat"
+import { sleep } from "#src/util/utilities"
+
+class BotError extends Error {
+  from: string
+  constructor(name: string, from: string) {
+    super(name)
+    this.from = from
+  }
+}
+
+export const botError = (from: string) => {
+  throw new BotError("Internal Bot Error", from)
+}
 
 type ErrorReporter<T extends ErrorReport> =
   ((report: T) => Promise<void>) &
   ((message: string) => Promise<void>)
 
+const DIFY_TIMEOUT = 4000
+
 export abstract class CoreBot<T extends ErrorReport> {
+  private lastTimestamp = Date.now()
   constructor(
     protected readonly client: Client<boolean>,
     protected readonly initFlag: boolean) { }
 
   protected abstract setEventHandlers: () => void
+
+  protected updateTimestamp = async (timestamp: number) => {
+    const timeDiff = timestamp - this.lastTimestamp
+    if (timeDiff < DIFY_TIMEOUT) {
+      this.lastTimestamp += DIFY_TIMEOUT
+      await sleep(DIFY_TIMEOUT - timeDiff)
+    } else {
+      this.lastTimestamp = timestamp + DIFY_TIMEOUT
+    }
+  }
 
   private coreInit = () => {
     this.client.on(Events.InteractionCreate, botErrorCommandsInteraction)
@@ -46,6 +74,38 @@ export abstract class CoreBot<T extends ErrorReport> {
       await channel.send(arg)
     } else {
       await channel.send(this.errorReportToMessage(arg))
+    }
+  }
+
+  protected wrapper = <Args extends unknown[]>(
+    f: (...args: Args) => Promise<void>
+  ) => {
+    return async (...args: Args) => {
+      try {
+        await f(...args)
+      } catch (err) {
+        if (err instanceof BotError) {
+          await this.portErrorReport(
+            `Bot Error comes from ${err.from}:\n\`\`\`\n${err}\n\`\`\``
+          )
+        } else if (err instanceof DBError) {
+          await this.portErrorReport(
+            `DB Error comes from ${err.from}:\n\`\`\`\n${err}\n\`\`\``
+          )
+        } else if (err instanceof JsonResultError) {
+          await this.portErrorReport(
+            `${err.report.name}: ${err.report.message}\n\`\`\`\n${err.report.raw}\n\`\`\``
+          )
+        } else if (err instanceof ResultError) {
+          await this.portErrorReport(
+            `${err.report.name}: ${err.report.message}`
+          )
+        } else {
+          await this.portErrorReport(
+            `External Error:\n\`\`\`\n${err}\n\`\`\``
+          )
+        }
+      }
     }
   }
 

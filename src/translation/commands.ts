@@ -12,9 +12,9 @@ import {
   connectDB,
   messageDB,
   ChannelConnectionFailure,
-  ChannelDisconnectionFailure,
-  NotTargetChannel,
+  ChannelDisconnectionFailure
 } from "#src/db/manager"
+import { botError } from "#src/util/bot"
 
 const CONNECT_COMMAND_NAME = "connect"
 const DISCONNECT_COMMAND_NAME = "disconnect"
@@ -113,7 +113,6 @@ const interactionConnect = async (
     CONNECT_DISCONNECT_OPTION.en
   )
   if (!jaChannel || !enChannel) {
-    console.error("Invalid channel(s)")
     return
   }
   await interaction.deferReply()
@@ -124,7 +123,7 @@ const interactionConnect = async (
     if (err instanceof ChannelConnectionFailure) {
       await interaction.editReply("Connection failure.")
     } else {
-      await interaction.editReply("[Bot internal error: connect command]")
+      botError("connect command")
     }
   }
 }
@@ -139,7 +138,6 @@ const interactionDisconnect = async (
     CONNECT_DISCONNECT_OPTION.en
   )
   if (!jaChannel || !enChannel) {
-    console.error("Invalid channel(s)")
     return
   }
   await interaction.deferReply()
@@ -150,7 +148,7 @@ const interactionDisconnect = async (
     if (err instanceof ChannelDisconnectionFailure) {
       await interaction.editReply("Disconnection failure.")
     } else {
-      await interaction.editReply("[Bot internal error: disconnect command]")
+      botError("disconnect command")
     }
   }
 }
@@ -166,15 +164,16 @@ const interactionShowTarget = async (
   await interaction.deferReply()
   try {
     const dstChannel = await connectDB.getTargetChannel(srcChannel.id)
-    await interaction.editReply(`Target channel is <#${dstChannel.channelID}>`)
-  } catch (err) {
-    if (err instanceof NotTargetChannel) {
+    if (dstChannel === undefined) {
       await interaction.editReply(
         `Channel <#${srcChannel.id}> is not connected.`
       )
-    } else {
-      await interaction.editReply("[Bot internal error: show-target command]")
+      return
     }
+
+    await interaction.editReply(`Target channel is <#${dstChannel.channelID}>`)
+  } catch (err) {
+    botError("show-target command")
   }
 }
 

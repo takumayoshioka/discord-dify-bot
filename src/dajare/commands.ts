@@ -11,6 +11,7 @@ import {
   DajareRemoveFailure,
   dajareDB,
 } from "#src/db/manager"
+import { botError } from "#src/util/bot"
 
 const SET_COMMAND_NAME = "set-dajare-ch"
 const REMOVE_COMMAND_NAME = "remove-dajare-ch"
@@ -77,7 +78,7 @@ const interactionSet = async (
     if (err instanceof DajareSetFailure) {
       await interaction.editReply("Set failure.")
     } else {
-      await interaction.editReply("[Bot internal error: set command]")
+      botError("set-dajare-ch command")
     }
   }
 }
@@ -100,7 +101,7 @@ const interactionDisconnect = async (
     if (err instanceof DajareRemoveFailure) {
       await interaction.editReply("Removal failure.")
     } else {
-      await interaction.editReply("[Bot internal error: remove command]")
+      botError("remove-dajare-ch command")
     }
   }
 }

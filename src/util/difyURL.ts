@@ -17,14 +17,6 @@ export type DifyErrorReport = {
   raw: string | undefined
 } | JsonFormatErrorReport
 
-// export type DifyResult = {
-//   status: "Success",
-//   result: string
-// } | {
-//   status: "Failure",
-//   errorReport: DifyErrorReport
-// }
-
 export type DifyKind = "translation" | "dajare"
 
 const requestURL = "chat-messages"
@@ -83,30 +75,6 @@ const setTimeoutRaceWithDify = (
   ])
 }
 
-/*
-type DifyError = {
-  status: number | undefined,
-  code: string | undefined,
-  retry: number | undefined
-}
-
-const parseDifyError = (rawError: string): DifyError => {
-  const body = rawError.slice(Math.max(rawError.indexOf("{"), 0))
-  const status = body.match(/['"]code['"]\s*:\s*(\d+)/)?.[1] ?? undefined
-  const code =
-    body.match(/['"]status['"]\s*:\s*['"]([^'"]+)['"]/)?.[1] ?? undefined
-  const retry =
-    body.match(/['"]retryDelay['"]\s*:\s*['"](\d+(?:\.\d+)?)s['"]/)?.[1]
-    ?? body.match(/retry\s+in\s+(\d+(?:\.\d+)?)s/i)?.[1]
-    ?? undefined
-  return {
-    status: (status === undefined) ? undefined : Number(status),
-    code,
-    retry: (retry === undefined) ? undefined : Number(retry)
-  }
-}
-*/
-
 // request for Dify
 const difyRequestBody = async (
   kind: DifyKind, message: string
@@ -133,10 +101,12 @@ const difyRequestBody = async (
     const errorResponse = parseErrorResponse(await response.text())
     switch (errorResponse.status) {
       case ("Success"): {
+        const name: DIFY_ERROR_NAME =
+          (errorResponse.result.status === 400) ? "RETRY" : "HTTP_ERROR"
         return {
           status: "Failure",
           errorReport: {
-            name: "HTTP_ERROR",
+            name,
             message: `${errorResponse.result.status}: ${errorResponse.result.code}`,
             raw: errorResponse.result.message
           }
@@ -144,10 +114,12 @@ const difyRequestBody = async (
       }
 
       case ("Failure"): {
+        const name: DIFY_ERROR_NAME =
+          (response.status === 400) ? "RETRY" : "HTTP_ERROR"
         return {
           status: "Failure",
           errorReport: {
-            name: "HTTP_ERROR",
+            name,
             message: `${response.status}: ${response.statusText}`,
             raw: undefined
           }
@@ -178,17 +150,4 @@ const difyRequestBody = async (
 
 export const difyRequest = async (kind: DifyKind, message: string) => {
   return await setTimeoutRaceWithDify(difyRequestBody(kind, message), 15_000)
-  // try {
-  //   const body = await setTimeoutRaceWithDify(difyRequestBody(kind, message), 15_000)
-
-  //   return await setTimeoutRaceWithDify(difyRequestBody(kind, message), 15_000)
-  // } catch (err) {
-  //   if (err instanceof Timeout) {
-  //     return `[Server timeout] original message:\n${message}`
-  //   } else if (err instanceof HttpError) {
-  //     return `[${err.message}] original message:\n${message}`
-  //   } else {
-  //     return `[Unknown error] original message:\n${message}`
-  //   }
-  // }
 }

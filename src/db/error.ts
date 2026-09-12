@@ -1,7 +1,7 @@
 import {
   type Generated,
 } from "kysely"
-import { type DB, openDB, CoreDB } from "#src/db/common"
+import { type DB, openDB, CoreDB, dbError } from "#src/db/common"
 
 const ERROR_CHANNEL_DB = "error_report_channel"
 
@@ -30,7 +30,7 @@ class ErrorChannelDBImpl extends CoreDB<RawErrorChannelDB> {
         .addColumn("channel_id", "text", (col) => col.notNull())
         .execute()
     } catch (err) {
-      throw new Error("Failed to initialize Error Report DB")
+      dbError("initializing Error DB")
     }
   }
 

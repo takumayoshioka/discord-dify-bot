@@ -28,16 +28,16 @@ const evaluate = async (message: string) => {
 
 export class DajareBot extends CoreBot<MessageErrorReport> {
   setEventHandlers = () => {
-    this.client.once(Events.ClientReady, this.login)
-    this.client.on(Events.MessageCreate, this.dajareBotReply)
-    this.client.on(Events.InteractionCreate, botDajareCommandsInteraction)
+    this.client.once(Events.ClientReady, this.wrapper(this.login))
+    this.client.on(Events.MessageCreate, this.wrapper(this.dajareBotReply))
+    this.client.on(Events.InteractionCreate, this.wrapper(botDajareCommandsInteraction))
   }
 
   commands = commands
 
   errorReportToMessage = (report: MessageErrorReport) => {
     const raw = (report.raw === undefined)
-      ? "" : `\n\`\`\`text\n${report.raw}\n\`\`\``
+      ? "" : `\n\`\`\`\n${report.raw}\n\`\`\``
     return `${report.name}: ${report.message}\nChannel: <#${report.channelID}>\nMessage Link: ${report.url}${raw}`
   }
 
@@ -62,6 +62,8 @@ export class DajareBot extends CoreBot<MessageErrorReport> {
     // does not send empty request
     if (content.length === 0) { return }
 
+    await this.updateTimestamp(message.createdTimestamp)
+
     // get evaluation result
     const evaluateRes = await evaluate(content)
 
@@ -71,10 +73,7 @@ export class DajareBot extends CoreBot<MessageErrorReport> {
         // do not send empty message
         if (res.length === 0) { return }
 
-        if (res === NOT_DAJARE) {
-          message.react("❌")
-          return
-        }
+        if (res === NOT_DAJARE) { return }
 
         await message.reply({
           content: res,

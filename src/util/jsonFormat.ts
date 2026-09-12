@@ -1,4 +1,4 @@
-import type { Result } from "#src/util/result"
+import { ResultError, type Result } from "#src/util/result"
 import z from "zod"
 
 export type JSON_FORMAT_ERROR_NAME = "JSON_SYNTAX_ERROR" | "ZOD_ERROR"
@@ -9,6 +9,14 @@ export type JsonFormatErrorReport = {
   name: JSON_FORMAT_ERROR_NAME,
   message: string,
   raw: string
+}
+
+export class JsonResultError extends ResultError {
+  override report: JsonFormatErrorReport
+  constructor(name: string, report: JsonFormatErrorReport) {
+    super(name, report)
+    this.report = report
+  }
 }
 
 const jsonFormatHandler = (err: unknown, payload: string, raw: string)
@@ -120,74 +128,3 @@ export const parseAttachmentFiles = (json: string) => {
     "parsing JSON of Attachment Files"
   )
 }
-
-/*
-export const parseRequest = (json: string): JsonRequest => {
-  try {
-    const parsed = difyRequest.parse(JSON.parse(json))
-    return parsed
-  } catch (err) {
-    if (err instanceof SyntaxError) {
-      throw new Error(
-        `Translation API request took invalid JSON.\n
-        ${json}`
-      )
-    } else if (err instanceof z.ZodError) {
-      throw new Error(
-        `Translation API request does not match the expected format.\n
-        ${json}`
-      )
-    } else {
-      throw err
-    }
-  }
-}
-
-export const parseResponse = (json: string): JsonResponse => {
-  try {
-    const parsed = difyResponse.parse(JSON.parse(json))
-    return parsed
-  } catch (err) {
-    if (err instanceof SyntaxError) {
-      throw new Error(
-        `Translation API response is invalid JSON.\n
-        ${json}`
-      )
-    } else {
-      throw err
-    }
-  }
-}
-
-export const parseErrorResponse = (json: string): JsonErrorResponse => {
-  try {
-    const parsed = difyErrorResponse.parse(JSON.parse(json))
-    return parsed
-  } catch (err) {
-    if (err instanceof SyntaxError) {
-      throw new Error(
-        `Translation API response is invalid JSON.\n
-        ${json}`
-      )
-    } else {
-      throw err
-    }
-  }
-}
-
-export const parseAttachmentFiles = (json: string)
-  : JsonResult<JsonAttachmentFiles> => {
-  try {
-    const parsed = jsonAttachmentFiles.parse(JSON.parse(json))
-    return {
-      status: "Success",
-      result: parsed
-    }
-  } catch (err) {
-    return {
-      status: "Failure",
-      errorReport: jsonFormatHandler(err, "parsing AttachmentFiles")
-    }
-  }
-}
-*/
