@@ -21,6 +21,7 @@ import {
 } from "#src/util/jsonFormat"
 import {
   difyRequest,
+  type DifyKind,
   type DifyResult,
 } from "#src/util/difyURL"
 import {
@@ -78,56 +79,60 @@ const generateWebhook = async (channel: TextChannel) => {
   return webhook
 }
 
-// collects channel IDs that has non-sent messages 
-const waitingChannelIDs = new Set<string>()
+class MessageSender {
+  // collects channel IDs that has non-sent messages 
+  private waitingChannelIDs = new Set<string>()
 
-// send translated messages from message database
-// waitingChannelIDs must have targetChannel.id in this function
-const sendTranslatedContentBody = async (targetChannel: TextChannel) => {
-  const row = await messageDB.getTranslatedContent(targetChannel.id)
+  // send translated messages from message database
+  // waitingChannelIDs must have targetChannel.id in this function
+  sendTranslatedContentBody = async (targetChannel: TextChannel) => {
+    const row = await messageDB.getTranslatedContent(targetChannel.id)
 
-  if (!row) {
-    waitingChannelIDs.delete(targetChannel.id)
-    return
-  }
-  if (!(row.translated_content) && row.translated_content !== "") {
-    waitingChannelIDs.delete(targetChannel.id)
-    return
-  }
-
-  const webhook = await getWebhook(targetChannel)
-  const files = parseAttachmentFiles(row.attachment_json)
-  switch (files.status) {
-    case ("Success"): {
-      await webhook.send({
-        content: row.translated_content,
-        files: files.result,
-        username: row.display_name,
-        avatarURL: row.avatar_url,
-      })
-
-      await messageDB.dequeue(row.id)
-      await sendTranslatedContentBody(targetChannel)
-      break
+    if (!row) {
+      this.waitingChannelIDs.delete(targetChannel.id)
+      return
+    }
+    if (!(row.translated_content) && row.translated_content !== "") {
+      this.waitingChannelIDs.delete(targetChannel.id)
+      return
     }
 
-    case ("Failure"): {
-      await messageDB.dequeue(row.id)
-      throw new JsonResultError("Parsing Json Attachment", files.errorReport)
+    const webhook = await getWebhook(targetChannel)
+    const files = parseAttachmentFiles(row.attachment_json)
+    switch (files.status) {
+      case ("Success"): {
+        await webhook.send({
+          content: row.translated_content,
+          files: files.result,
+          username: row.display_name,
+          avatarURL: row.avatar_url,
+        })
+
+        await messageDB.dequeue(row.id)
+        await this.sendTranslatedContentBody(targetChannel)
+        break
+      }
+
+      case ("Failure"): {
+        await messageDB.dequeue(row.id)
+        throw new JsonResultError("Parsing Json Attachment", files.errorReport)
+      }
     }
   }
-}
 
-const sendTranslatedContent = async (targetChannel: TextChannel) => {
-  if (waitingChannelIDs.has(targetChannel.id)) {
-    return
-  } else {
-    waitingChannelIDs.add(targetChannel.id)
-    await sendTranslatedContentBody(targetChannel)
+  sendTranslatedContent = async (targetChannel: TextChannel) => {
+    if (this.waitingChannelIDs.has(targetChannel.id)) {
+      return
+    } else {
+      this.waitingChannelIDs.add(targetChannel.id)
+      await this.sendTranslatedContentBody(targetChannel)
+    }
   }
 }
 
 export class TranslationBot extends CoreBot<MessageErrorReport> {
+  private sender = new MessageSender()
+
   setEventHandlers = () => {
     this.client.once(Events.ClientReady, this.wrapper(this.login))
     this.client.on(Events.MessageCreate, this.wrapper(this.transferMessage))
@@ -137,6 +142,7 @@ export class TranslationBot extends CoreBot<MessageErrorReport> {
   }
 
   commands = commands
+  protected kind: DifyKind = "translation"
 
   protected errorReportToMessage = (report: MessageErrorReport) => {
     const raw = (report.raw === undefined)
@@ -164,11 +170,36 @@ export class TranslationBot extends CoreBot<MessageErrorReport> {
     if (isPermission) {
       await messageDB.reset()
     } else {
-      console.error(
-        `User ${this.client.user.tag} does not have ManageWebhook permission`
-      )
+      this.portErrorReport(`User ${this.client.user.tag} does not have ManageWebhook permission`)
       await this.logout()
     }
+  }
+
+  private notify = async (jaMsg: string, enMsg: string) => {
+    const pair = await connectDB.getFirst()
+    if (pair === undefined) { return }
+
+    const jaChannel =
+      await this.client.channels.cache.get(pair.ja_channel_id) ??
+      await this.client.channels.fetch(pair.ja_channel_id)
+    const enChannel =
+      await this.client.channels.cache.get(pair.en_channel_id) ??
+      await this.client.channels.fetch(pair.en_channel_id)
+
+    if (!isTextChannel(jaChannel!) || !isTextChannel(enChannel!)) { return }
+
+    await jaChannel.send(jaMsg)
+    await enChannel.send(enMsg)
+  }
+
+  protected leave = async () => {
+    await this.notify("ごめんなさい、仕事が立て込んでしまいました。しばらく休ませてください。", "I'll be back!")
+    await messageDB.reset()
+  }
+
+  protected recover = async () => {
+    await messageDB.reset()
+    await this.notify("ただいま戻りました。", "I'm back!")
   }
 
   // translate messages sent only in TextChannel
@@ -188,8 +219,6 @@ export class TranslationBot extends CoreBot<MessageErrorReport> {
 
     // reject non-TextChannel
     if (!isTextChannel(targetChannel!)) { return }
-
-    await this.updateTimestamp(message.createdTimestamp)
 
     const content = message.content
     const attachedFiles = [...message.attachments.values()]
@@ -221,6 +250,8 @@ export class TranslationBot extends CoreBot<MessageErrorReport> {
 
     if (!rowID) { return }
 
+    await this.updateTimestamp(message.createdTimestamp)
+
     // gets translation result
     // does not translate it if it is empty
     const translatedRes: DifyResult = (content.length === 0)
@@ -230,16 +261,29 @@ export class TranslationBot extends CoreBot<MessageErrorReport> {
     switch (translatedRes.status) {
       case ("Success"): {
         await messageDB.setTranslatedContent(rowID, translatedRes.result)
-        await sendTranslatedContent(targetChannel)
+        await this.sender.sendTranslatedContent(targetChannel)
         break
       }
 
       case ("Failure"): {
-        await this.portErrorReport({
-          ...translatedRes.errorReport,
-          channelID: message.channelId,
-          url: message.url
-        })
+        if (translatedRes.errorReport.name === "RETRY") {
+          this.retryTimestamp(message.createdTimestamp)
+          const retryTranslatedRes = await translate(content, target.direction)
+          switch (retryTranslatedRes.status) {
+            case ("Success"): {
+              await messageDB.setTranslatedContent(rowID, retryTranslatedRes.result)
+              await this.sender.sendTranslatedContent(targetChannel)
+              break
+            }
+
+            case ("Failure"): {
+              this.retry()
+              break
+            }
+          }
+        }
+        await this.portErrorReport(
+          difyErrorToMessageError(translatedRes.errorReport, message))
         break
       }
     }
@@ -274,6 +318,21 @@ export class TranslationBot extends CoreBot<MessageErrorReport> {
       }
 
       case ("Failure"): {
+        if (translatedRes.errorReport.name === "RETRY") {
+          this.retryTimestamp(message.createdTimestamp)
+          const retryTranslatedRes = await translate(message.content, dir)
+          switch (retryTranslatedRes.status) {
+            case ("Success"): {
+              await interaction.editReply(retryTranslatedRes.result)
+              break
+            }
+
+            case ("Failure"): {
+              this.retry()
+              break
+            }
+          }
+        }
         await this.portErrorReport(
           difyErrorToMessageError(translatedRes.errorReport, message))
         await interaction.deleteReply()
@@ -327,6 +386,30 @@ export class TranslationBot extends CoreBot<MessageErrorReport> {
       }
 
       case ("Failure"): {
+        if (translatedRes.errorReport.name === "RETRY") {
+          this.retryTimestamp(message.createdTimestamp)
+          const retryTranslatedRes = await translate(message.content, translationDirection)
+          switch (retryTranslatedRes.status) {
+            case ("Success"): {
+              await targetChannel.send({
+                content: retryTranslatedRes.result,
+                reply: {
+                  messageReference: message.id,
+                  failIfNotExists: false
+                },
+                allowedMentions: {
+                  repliedUser: false
+                },
+              })
+              break
+            }
+
+            case ("Failure"): {
+              this.retry()
+              break
+            }
+          }
+        }
         await this.portErrorReport(
           difyErrorToMessageError(translatedRes.errorReport, message))
         break

@@ -67,10 +67,7 @@ const interactionSet = async (
   const channel = interaction.options.getChannel(
     SET_REMOVE_OPTION.ch
   )
-  if (channel === null) {
-    console.error("Invalid channel")
-    return
-  }
+  if (channel === null) { return }
   await interaction.deferReply()
   try {
     await errorDB.enqueue(channel.id)

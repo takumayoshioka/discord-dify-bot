@@ -10,6 +10,7 @@ import { botErrorCommandsInteraction, commands } from "#src/util/commands"
 import { DBError } from "#src/db/common"
 import { JsonResultError } from "#src/util/jsonFormat"
 import { sleep } from "#src/util/utilities"
+import { difyRequest, type DifyKind } from "#src/util/difyURL"
 
 class BotError extends Error {
   from: string
@@ -27,15 +28,104 @@ type ErrorReporter<T extends ErrorReport> =
   ((report: T) => Promise<void>) &
   ((message: string) => Promise<void>)
 
-const DIFY_TIMEOUT = 4000
+const DIFY_TIMEOUT = 2_000 // 8_000
+const DIFY_RETRY_TIMEOUT = 10_000 // 120_000
+
+type RetryState = "Running" | "HalfClosed" | "Closed"
+
+const retryTimeDefault = 5_000 // 4 * 60 * 60 * 1_000
+const retryTimeMap = new Map<RetryState, number>([
+  // ["Running", 1 * 60 * 60 * 1_000],
+  // ["HalfClosed", 4 * 60 * 60 * 1_000],
+  // ["Closed", 4 * 60 * 60 * 1_000],
+  ["Running", 5 * 1_000],
+  ["HalfClosed", 5 * 1_000],
+  ["Closed", 5 * 1_000],
+])
+
+const retryRequest = async (kind: DifyKind) => {
+  const res = await difyRequest(kind, "接続テスト")
+  switch (res.status) {
+    case ("Success"): { return true }
+    case ("Failure"): { return false }
+  }
+}
+
+class RetryStateMachine {
+  constructor(
+    private state: RetryState,
+    private getKind: () => DifyKind,
+    private leave: () => Promise<void>,
+    private recover: () => Promise<void>
+  ) { }
+
+  stepFailure = async () => {
+    const retryTime = retryTimeMap.get(this.state) ?? retryTimeDefault
+    this.setRetryCooldown(this.getKind(), retryTime)
+    switch (this.state) {
+      case ("Running"): {
+        this.state = "HalfClosed"
+        await this.leave()
+        break
+      }
+
+      case ("HalfClosed"): {
+        this.state = "Closed"
+        break
+      }
+
+      case ("Closed"): {
+        this.state = "Closed"
+        break
+      }
+
+      default: {
+        const _exhaustive: never = this.state
+        throw (_exhaustive)
+      }
+    }
+  }
+
+  private stepSuccess = () => { this.state = "Running" }
+
+  setRetryCooldown = (kind: DifyKind, retryTime: number) => {
+    setTimeout(async () => {
+      if (this.state === "Running") { return }
+      const isRetry = await retryRequest(kind)
+      if (isRetry) {
+        this.stepSuccess()
+        await this.recover()
+      } else {
+        await this.stepFailure()
+      }
+    }, retryTime)
+  }
+
+  get running() { return (this.state === "Running") }
+}
 
 export abstract class CoreBot<T extends ErrorReport> {
-  private lastTimestamp = Date.now()
+  private lastTimestamp: number
+  private readonly circuitBreaker = new RetryStateMachine(
+    "Running",
+    () => this.kind,
+    () => this.leave(),
+    () => this.recover()
+  )
   constructor(
     protected readonly client: Client<boolean>,
-    protected readonly initFlag: boolean) { }
+    protected readonly initFlag: boolean
+  ) {
+    this.lastTimestamp = Date.now()
+  }
 
   protected abstract setEventHandlers: () => void
+  protected abstract kind: DifyKind
+  protected abstract leave: () => Promise<void>
+  protected abstract recover: () => Promise<void>
+
+  abstract commands:
+    (SlashCommandOptionsOnlyBuilder | ContextMenuCommandBuilder)[]
 
   protected updateTimestamp = async (timestamp: number) => {
     const timeDiff = timestamp - this.lastTimestamp
@@ -47,6 +137,19 @@ export abstract class CoreBot<T extends ErrorReport> {
     }
   }
 
+  protected retryTimestamp = async (timestamp: number) => {
+    this.lastTimestamp = timestamp + DIFY_RETRY_TIMEOUT
+    await sleep(DIFY_TIMEOUT + DIFY_RETRY_TIMEOUT)
+  }
+
+  protected retry = async () => {
+    await this.circuitBreaker.stepFailure()
+  }
+
+  get running() {
+    return (this.circuitBreaker.running)
+  }
+
   private coreInit = () => {
     this.client.on(Events.InteractionCreate, botErrorCommandsInteraction)
   }
@@ -55,9 +158,6 @@ export abstract class CoreBot<T extends ErrorReport> {
     if (this.initFlag) { this.coreInit() }
     this.setEventHandlers()
   }
-
-  abstract commands:
-    (SlashCommandOptionsOnlyBuilder | ContextMenuCommandBuilder)[]
 
   protected abstract errorReportToMessage: (report: T) => string
 
@@ -81,6 +181,7 @@ export abstract class CoreBot<T extends ErrorReport> {
     f: (...args: Args) => Promise<void>
   ) => {
     return async (...args: Args) => {
+      if (!this.circuitBreaker.running) { return }
       try {
         await f(...args)
       } catch (err) {

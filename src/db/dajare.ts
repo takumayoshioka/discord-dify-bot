@@ -80,6 +80,17 @@ class DajareDBImple extends CoreDB<RawDajareDB> {
     return false
   }
 
+  // return first channel
+  getFirst = async () => {
+    const ch = await this.db
+      .selectFrom(DAJARE_DB_TABLE)
+      .selectAll()
+      .executeTakeFirst()
+
+    if (ch === undefined) { return undefined }
+    return ch.channel_id
+  }
+
   // return all dajare channels
   getAll = async () => {
     const table = await this.db

@@ -67,7 +67,6 @@ const interactionSet = async (
     SET_REMOVE_OPTION.ch
   )
   if (channel === null) {
-    console.error("Invalid channel")
     return
   }
   await interaction.deferReply()
@@ -89,10 +88,7 @@ const interactionDisconnect = async (
   const channel = interaction.options.getChannel(
     SET_REMOVE_OPTION.ch
   )
-  if (channel === null) {
-    console.error("Invalid channel")
-    return
-  }
+  if (channel === null) { return }
   await interaction.deferReply()
   try {
     await dajareDB.dequeue(channel.id)

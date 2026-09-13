@@ -157,10 +157,7 @@ const interactionShowTarget = async (
   interaction: ChatInputCommandInteraction
 ) => {
   const srcChannel = interaction.options.getChannel(SHOW_TARGET_OPTION)
-  if (!srcChannel) {
-    console.error("Invalid channel")
-    return
-  }
+  if (!srcChannel) { return }
   await interaction.deferReply()
   try {
     const dstChannel = await connectDB.getTargetChannel(srcChannel.id)

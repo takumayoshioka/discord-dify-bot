@@ -129,6 +129,20 @@ class ConnectDBImpl extends CoreDB<RawConnectDB> {
     }
   }
 
+  // return first channel pairs
+  getFirst = async () => {
+    const pair = await this.db
+      .selectFrom(CONNECT_DB_TABLE)
+      .selectAll()
+      .executeTakeFirst()
+
+    if (pair === undefined) { return undefined }
+    return {
+      ja_channel_id: pair.ja_channel_id,
+      en_channel_id: pair.en_channel_id
+    }
+  }
+
   // return all channel pairs
   getAll = async () => {
     const table = await this.db

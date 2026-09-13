@@ -8,6 +8,7 @@ import {
 
 import {
   difyRequest,
+  type DifyKind,
 } from "#src/util/difyURL"
 import {
   dajareDB
@@ -34,6 +35,7 @@ export class DajareBot extends CoreBot<MessageErrorReport> {
   }
 
   commands = commands
+  protected kind: DifyKind = "dajare"
 
   errorReportToMessage = (report: MessageErrorReport) => {
     const raw = (report.raw === undefined)
@@ -42,6 +44,27 @@ export class DajareBot extends CoreBot<MessageErrorReport> {
   }
 
   loginCallback = async () => { }
+
+  private notify = async (msg: string) => {
+    const channelID = await dajareDB.getFirst()
+    if (channelID === undefined) { return }
+
+    const ch =
+      await this.client.channels.cache.get(channelID) ??
+      await this.client.channels.fetch(channelID)
+
+    if (!isTextChannel(ch!)) { return }
+
+    await ch.send(msg)
+  }
+
+  protected leave = async () => {
+    await this.notify("ごめんなさい、仕事が立て込んでしまいました。しばらく休ませてください。")
+  }
+
+  protected recover = async () => {
+    await this.notify("ただいま戻りました。")
+  }
 
   dajareBotReply = async (
     message: OmitPartialGroupDMChannel<Message<boolean>>
@@ -72,7 +95,6 @@ export class DajareBot extends CoreBot<MessageErrorReport> {
         const res = evaluateRes.result
         // do not send empty message
         if (res.length === 0) { return }
-
         if (res === NOT_DAJARE) { return }
 
         await message.reply({
@@ -84,6 +106,29 @@ export class DajareBot extends CoreBot<MessageErrorReport> {
       }
 
       case ("Failure"): {
+        if (evaluateRes.errorReport.name === "RETRY") {
+          this.retryTimestamp(message.createdTimestamp)
+          const retryEvaluateRes = await evaluate(content)
+          switch (retryEvaluateRes.status) {
+            case ("Success"): {
+              const res = retryEvaluateRes.result
+              // do not send empty message
+              if (res.length === 0) { return }
+              if (res === NOT_DAJARE) { return }
+
+              await message.reply({
+                content: res,
+                allowedMentions: { repliedUser: false }
+              })
+              break
+            }
+
+            case ("Failure"): {
+              this.retry()
+              break
+            }
+          }
+        }
         await this.portErrorReport(
           difyErrorToMessageError(evaluateRes.errorReport, message))
         break
