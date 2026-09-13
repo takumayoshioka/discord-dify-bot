@@ -1,7 +1,7 @@
 import {
   type Generated,
 } from "kysely"
-import { type DB, openDB, CoreDB } from "#src/db/common"
+import { type DB, openDB, CoreDB, dbError } from "#src/db/common"
 
 const CONNECT_DB_TABLE = "channel_pair_queue"
 
@@ -13,7 +13,6 @@ type RawConnectDB = {
   }
 }
 
-export class NotTargetChannel extends Error { };
 export class ChannelConnectionFailure extends Error { };
 export class ChannelDisconnectionFailure extends Error { };
 
@@ -41,16 +40,14 @@ class ConnectDBImpl extends CoreDB<RawConnectDB> {
         .addColumn("en_channel_id", "text", (col) => col.notNull())
         .execute()
     } catch (err) {
-      throw new Error(
-        `Failed to initialize channel connection db`
-      )
+      return dbError("initializing connection db")
     }
   }
 
   // return pair opponent 
   getTargetChannel = async (
     channelID: string
-  ): Promise<TranslationTarget> => {
+  ): Promise<TranslationTarget | undefined> => {
     const targetChannelIDDir =
       await this.db
         .selectFrom(CONNECT_DB_TABLE)
@@ -79,7 +76,7 @@ class ConnectDBImpl extends CoreDB<RawConnectDB> {
         })
         .executeTakeFirst()
 
-    if (!targetChannelIDDir) { throw new NotTargetChannel }
+    if (!targetChannelIDDir) { return undefined }
 
     return targetChannelIDDir
   }
@@ -129,6 +126,20 @@ class ConnectDBImpl extends CoreDB<RawConnectDB> {
 
     if (deleteRes.numDeletedRows !== 1n) {
       throw new ChannelDisconnectionFailure
+    }
+  }
+
+  // return first channel pairs
+  getFirst = async () => {
+    const pair = await this.db
+      .selectFrom(CONNECT_DB_TABLE)
+      .selectAll()
+      .executeTakeFirst()
+
+    if (pair === undefined) { return undefined }
+    return {
+      ja_channel_id: pair.ja_channel_id,
+      en_channel_id: pair.en_channel_id
     }
   }
 

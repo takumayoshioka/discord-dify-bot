@@ -1,7 +1,7 @@
 import {
   type Generated,
 } from "kysely"
-import { type DB, openDB, CoreDB } from "#src/db/common"
+import { type DB, openDB, CoreDB, dbError } from "#src/db/common"
 
 const DAJARE_DB_TABLE = "dajare_table"
 
@@ -31,9 +31,7 @@ class DajareDBImple extends CoreDB<RawDajareDB> {
         .addColumn("channel_id", "text", (col) => col.notNull())
         .execute()
     } catch (err) {
-      throw new Error(
-        `Failed to initialize dajare db`
-      )
+      dbError("initializing Dajare DB")
     }
   }
 
@@ -80,6 +78,17 @@ class DajareDBImple extends CoreDB<RawDajareDB> {
       if (channel_id === channel_id_res) { return true }
     }
     return false
+  }
+
+  // return first channel
+  getFirst = async () => {
+    const ch = await this.db
+      .selectFrom(DAJARE_DB_TABLE)
+      .selectAll()
+      .executeTakeFirst()
+
+    if (ch === undefined) { return undefined }
+    return ch.channel_id
   }
 
   // return all dajare channels

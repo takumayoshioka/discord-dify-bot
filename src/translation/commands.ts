@@ -1,5 +1,7 @@
 import {
+  ApplicationCommandType,
   SlashCommandBuilder,
+  ContextMenuCommandBuilder,
   ChannelType,
   type Interaction,
   ChatInputCommandInteraction,
@@ -10,9 +12,9 @@ import {
   connectDB,
   messageDB,
   ChannelConnectionFailure,
-  ChannelDisconnectionFailure,
-  NotTargetChannel,
+  ChannelDisconnectionFailure
 } from "#src/db/manager"
+import { botError } from "#src/util/bot"
 
 const CONNECT_COMMAND_NAME = "connect"
 const DISCONNECT_COMMAND_NAME = "disconnect"
@@ -24,7 +26,7 @@ const CONNECT_DISCONNECT_OPTION = { ja: "ja", en: "en" }
 const SHOW_TARGET_OPTION = "ch"
 
 // connect/disconnect command builder
-export const connectCommand = new SlashCommandBuilder()
+const connectCommand = new SlashCommandBuilder()
   .setName(CONNECT_COMMAND_NAME)
   .setDescription("Connect ja/en channels")
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
@@ -43,7 +45,7 @@ export const connectCommand = new SlashCommandBuilder()
       .addChannelTypes(ChannelType.GuildText)
   )
 
-export const disconnectCommand = new SlashCommandBuilder()
+const disconnectCommand = new SlashCommandBuilder()
   .setName(DISCONNECT_COMMAND_NAME)
   .setDescription("Disconnect ja/en channels")
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
@@ -62,7 +64,7 @@ export const disconnectCommand = new SlashCommandBuilder()
       .addChannelTypes(ChannelType.GuildText)
   )
 
-export const showTargetCommand = new SlashCommandBuilder()
+const showTargetCommand = new SlashCommandBuilder()
   .setName(SHOW_TARGET_COMMAND_NAME)
   .setDescription("Show connected target channel")
   .addChannelOption((option) =>
@@ -73,18 +75,33 @@ export const showTargetCommand = new SlashCommandBuilder()
       .addChannelTypes(ChannelType.GuildText)
   )
 
-export const showAllCommand = new SlashCommandBuilder()
+const showAllCommand = new SlashCommandBuilder()
   .setName(SHOW_ALL_COMMAND_NAME)
   .setDescription("Show all connected channels")
 
-export const resetChDBCommand = new SlashCommandBuilder()
+const resetChDBCommand = new SlashCommandBuilder()
   .setName(RESET_CHANNEL_DB_COMMAND_NAME)
   .setDescription("Reset channel DB")
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
 
-export const resetMsgDBCommand = new SlashCommandBuilder()
+const resetMsgDBCommand = new SlashCommandBuilder()
   .setName(RESET_MESSAGE_DB_COMMAND_NAME)
   .setDescription("Reset message DB")
+
+// build a translate command in context menu
+const translateMessageCommand = new ContextMenuCommandBuilder()
+  .setName("translate")
+  .setType(ApplicationCommandType.Message)
+
+export const commands = [
+  translateMessageCommand,
+  connectCommand,
+  disconnectCommand,
+  showTargetCommand,
+  showAllCommand,
+  resetChDBCommand,
+  resetMsgDBCommand
+]
 
 const interactionConnect = async (
   interaction: ChatInputCommandInteraction
@@ -96,7 +113,6 @@ const interactionConnect = async (
     CONNECT_DISCONNECT_OPTION.en
   )
   if (!jaChannel || !enChannel) {
-    console.error("Invalid channel(s)")
     return
   }
   await interaction.deferReply()
@@ -107,7 +123,7 @@ const interactionConnect = async (
     if (err instanceof ChannelConnectionFailure) {
       await interaction.editReply("Connection failure.")
     } else {
-      await interaction.editReply("[Bot internal error: connect command]")
+      botError("connect command")
     }
   }
 }
@@ -122,7 +138,6 @@ const interactionDisconnect = async (
     CONNECT_DISCONNECT_OPTION.en
   )
   if (!jaChannel || !enChannel) {
-    console.error("Invalid channel(s)")
     return
   }
   await interaction.deferReply()
@@ -133,7 +148,7 @@ const interactionDisconnect = async (
     if (err instanceof ChannelDisconnectionFailure) {
       await interaction.editReply("Disconnection failure.")
     } else {
-      await interaction.editReply("[Bot internal error: disconnect command]")
+      botError("disconnect command")
     }
   }
 }
@@ -142,22 +157,20 @@ const interactionShowTarget = async (
   interaction: ChatInputCommandInteraction
 ) => {
   const srcChannel = interaction.options.getChannel(SHOW_TARGET_OPTION)
-  if (!srcChannel) {
-    console.error("Invalid channel")
-    return
-  }
+  if (!srcChannel) { return }
   await interaction.deferReply()
   try {
     const dstChannel = await connectDB.getTargetChannel(srcChannel.id)
-    await interaction.editReply(`Target channel is <#${dstChannel.channelID}>`)
-  } catch (err) {
-    if (err instanceof NotTargetChannel) {
+    if (dstChannel === undefined) {
       await interaction.editReply(
         `Channel <#${srcChannel.id}> is not connected.`
       )
-    } else {
-      await interaction.editReply("[Bot internal error: show-target command]")
+      return
     }
+
+    await interaction.editReply(`Target channel is <#${dstChannel.channelID}>`)
+  } catch (err) {
+    botError("show-target command")
   }
 }
 
@@ -233,7 +246,6 @@ export const botConnectionCommandsInteraction = async (
     }
 
     default: {
-      console.error("Invalid command")
       return
     }
   }

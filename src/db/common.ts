@@ -7,6 +7,18 @@ import {
   SqliteDialect
 } from "kysely"
 
+export class DBError extends Error {
+  from: string
+  constructor(name: string, from: string) {
+    super(name)
+    this.from = from
+  }
+}
+
+export const dbError = (from: string): never => {
+  throw new DBError("DB Error", from)
+}
+
 // open SQLiteDB file and returns it as DB
 const openSQLiteDB = async (path: string) => {
   try {
@@ -22,9 +34,7 @@ const openSQLiteDB = async (path: string) => {
       throw err
     }
   } catch (err) {
-    throw new Error(
-      `Cannot create SQLite DB: ${path}`
-    )
+    return dbError(`creating SQLite DB (path: ${path})`)
   }
 }
 
@@ -53,6 +63,7 @@ export abstract class CoreDB<RawDB> {
     await this.db.deleteFrom(this.tableName).execute()
   }
 
+  abstract init: () => Promise<void>
   abstract enqueue: (...items: never[]) => Promise<unknown>
   abstract dequeue: (...items: never[]) => Promise<unknown>
 }
