@@ -169,7 +169,7 @@ const interactionShowTarget = async (
     }
 
     await interaction.editReply(`Target channel is <#${dstChannel.channelID}>`)
-  } catch (err) {
+  } catch (_) {
     botError("show-target command")
   }
 }

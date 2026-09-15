@@ -33,7 +33,7 @@ const openSQLiteDB = async (path: string) => {
       sqlite.close()
       throw err
     }
-  } catch (err) {
+  } catch (_) {
     return dbError(`creating SQLite DB (path: ${path})`)
   }
 }

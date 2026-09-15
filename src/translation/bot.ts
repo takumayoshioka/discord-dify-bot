@@ -170,7 +170,7 @@ export class TranslationBot extends CoreBot<MessageErrorReport> {
     if (isPermission) {
       await messageDB.reset()
     } else {
-      this.portErrorReport(`User ${this.client.user.tag} does not have ManageWebhook permission`)
+      await this.portErrorReport(`User ${this.client.user.tag} does not have ManageWebhook permission`)
       await this.logout()
     }
   }
@@ -180,10 +180,10 @@ export class TranslationBot extends CoreBot<MessageErrorReport> {
     if (pair === undefined) { return }
 
     const jaChannel =
-      await this.client.channels.cache.get(pair.ja_channel_id) ??
+      this.client.channels.cache.get(pair.ja_channel_id) ??
       await this.client.channels.fetch(pair.ja_channel_id)
     const enChannel =
-      await this.client.channels.cache.get(pair.en_channel_id) ??
+      this.client.channels.cache.get(pair.en_channel_id) ??
       await this.client.channels.fetch(pair.en_channel_id)
 
     if (!isTextChannel(jaChannel!) || !isTextChannel(enChannel!)) { return }
@@ -214,7 +214,7 @@ export class TranslationBot extends CoreBot<MessageErrorReport> {
     if (target === undefined) { return }
 
     const targetChannel =
-      await this.client.channels.cache.get(target.channelID) ??
+      this.client.channels.cache.get(target.channelID) ??
       await this.client.channels.fetch(target.channelID)
 
     // reject non-TextChannel
@@ -267,7 +267,7 @@ export class TranslationBot extends CoreBot<MessageErrorReport> {
 
       case ("Failure"): {
         if (translatedRes.errorReport.name === "RETRY") {
-          this.retryTimestamp(message.createdTimestamp)
+          await this.retryTimestamp(message.createdTimestamp)
           const retryTranslatedRes = await translate(content, target.direction)
           switch (retryTranslatedRes.status) {
             case ("Success"): {
@@ -277,7 +277,7 @@ export class TranslationBot extends CoreBot<MessageErrorReport> {
             }
 
             case ("Failure"): {
-              this.retry()
+              await this.retry()
               break
             }
           }
@@ -319,7 +319,7 @@ export class TranslationBot extends CoreBot<MessageErrorReport> {
 
       case ("Failure"): {
         if (translatedRes.errorReport.name === "RETRY") {
-          this.retryTimestamp(message.createdTimestamp)
+          await this.retryTimestamp(message.createdTimestamp)
           const retryTranslatedRes = await translate(message.content, dir)
           switch (retryTranslatedRes.status) {
             case ("Success"): {
@@ -328,7 +328,7 @@ export class TranslationBot extends CoreBot<MessageErrorReport> {
             }
 
             case ("Failure"): {
-              this.retry()
+              await this.retry()
               break
             }
           }
@@ -387,7 +387,7 @@ export class TranslationBot extends CoreBot<MessageErrorReport> {
 
       case ("Failure"): {
         if (translatedRes.errorReport.name === "RETRY") {
-          this.retryTimestamp(message.createdTimestamp)
+          await this.retryTimestamp(message.createdTimestamp)
           const retryTranslatedRes = await translate(message.content, translationDirection)
           switch (retryTranslatedRes.status) {
             case ("Success"): {
@@ -405,7 +405,7 @@ export class TranslationBot extends CoreBot<MessageErrorReport> {
             }
 
             case ("Failure"): {
-              this.retry()
+              await this.retry()
               break
             }
           }

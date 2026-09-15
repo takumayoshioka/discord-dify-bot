@@ -39,7 +39,7 @@ class ConnectDBImpl extends CoreDB<RawConnectDB> {
         .addColumn("ja_channel_id", "text", (col) => col.notNull())
         .addColumn("en_channel_id", "text", (col) => col.notNull())
         .execute()
-    } catch (err) {
+    } catch (_) {
       return dbError("initializing connection db")
     }
   }

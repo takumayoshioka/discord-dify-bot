@@ -10,14 +10,14 @@ import { TranslationBot } from "#src/translation/bot"
 import { DajareBot } from "#src/dajare/bot"
 import {
   connectDB,
-  // dajareDB,
+  dajareDB,
   errorDB,
   messageDB
 } from "#src/db/manager"
 import { botSetup } from "#src/util/bot"
 
 await connectDB.init()
-// await dajareDB.init()
+await dajareDB.init()
 await messageDB.init()
 await errorDB.init()
 
