@@ -50,7 +50,7 @@ export class DajareBot extends CoreBot<MessageErrorReport> {
     if (channelID === undefined) { return }
 
     const ch =
-      await this.client.channels.cache.get(channelID) ??
+      this.client.channels.cache.get(channelID) ??
       await this.client.channels.fetch(channelID)
 
     if (!isTextChannel(ch!)) { return }
@@ -107,7 +107,7 @@ export class DajareBot extends CoreBot<MessageErrorReport> {
 
       case ("Failure"): {
         if (evaluateRes.errorReport.name === "RETRY") {
-          this.retryTimestamp(message.createdTimestamp)
+          await this.retryTimestamp(message.createdTimestamp)
           const retryEvaluateRes = await evaluate(content)
           switch (retryEvaluateRes.status) {
             case ("Success"): {
@@ -124,7 +124,7 @@ export class DajareBot extends CoreBot<MessageErrorReport> {
             }
 
             case ("Failure"): {
-              this.retry()
+              await this.retry()
               break
             }
           }

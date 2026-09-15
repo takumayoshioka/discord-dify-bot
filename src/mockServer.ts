@@ -1,4 +1,5 @@
 import { createServer } from "http"
+import { buffer } from "stream/consumers"
 
 import {
   createResponse,
@@ -6,57 +7,64 @@ import {
   parseRequest
 } from "#src/util/jsonFormat"
 import { getWorkflowURL } from "#src/util/difyURL"
-import { unwrap } from "./util/result.js"
+import { unwrap } from "#src/util/result"
+import { detachVoidPromise } from "#src/util/utilities"
 
 const requestURL = getWorkflowURL()
 const host = requestURL.hostname
 const port = Number(requestURL.port)
 
-const server = createServer(async (request, response) => {
-  if (
-    request.method !== "POST" ||
-    request.url !== requestURL.pathname
-  ) {
-    response.writeHead(404,
-      {
-        "Content-Type": "application/json; charset=utf-8"
+let cnt = 0
+
+const server = createServer((request, response) => {
+  const body = async () => {
+    if (
+      request.method !== "POST" ||
+      request.url !== requestURL.pathname
+    ) {
+      response.writeHead(404,
+        {
+          "Content-Type": "application/json; charset=utf-8"
+        })
+
+      response.end(JSON.stringify({
+        error: "Not found",
+      }))
+
+      return
+    }
+
+    const rawBody = (await buffer(request)).toString("utf-8")
+
+    try {
+      const body = unwrap(parseRequest(rawBody))
+      const translatedText = [...getRequest(body)].reverse().join("")
+
+      cnt++
+      if (5 <= cnt && cnt < 10) {
+        response.writeHead(400, {
+          "Content-Type": "application/json; charset=utf-8",
+        })
+      } else {
+        response.writeHead(200, {
+          "Content-Type": "application/json; charset=utf-8",
+        })
+      }
+
+      response.end(JSON.stringify(
+        createResponse(translatedText)
+      ))
+    } catch (err) {
+      response.writeHead(400, {
+        "Content-Type": "application/json; charset=utf-8",
       })
 
-    response.end(JSON.stringify({
-      error: "Not found",
-    }))
-
-    return
+      response.end(JSON.stringify({
+        error: `Invalid request: \n` + String(err),
+      }))
+    }
   }
-
-  const chunks: Buffer[] = []
-
-  for await (const chunk of request) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
-  }
-
-  const rawBody = Buffer.concat(chunks).toString("utf-8")
-
-  try {
-    const body = unwrap(parseRequest(rawBody))
-    const translatedText = [...getRequest(body)].reverse().join("")
-
-    response.writeHead(200, {
-      "Content-Type": "application/json; charset=utf-8",
-    })
-
-    response.end(JSON.stringify(
-      createResponse(translatedText)
-    ))
-  } catch (err) {
-    response.writeHead(400, {
-      "Content-Type": "application/json; charset=utf-8",
-    })
-
-    response.end(JSON.stringify({
-      error: `Invalid request: \n${err}`,
-    }))
-  }
+  detachVoidPromise(body)
 })
 
 server.listen(port, host, () => {

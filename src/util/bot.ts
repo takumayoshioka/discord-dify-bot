@@ -9,7 +9,7 @@ import { errorDB } from "#src/db/manager"
 import { botErrorCommandsInteraction, commands } from "#src/util/commands"
 import { DBError } from "#src/db/common"
 import { JsonResultError } from "#src/util/jsonFormat"
-import { sleep } from "#src/util/utilities"
+import { detachVoidPromise, sleep } from "#src/util/utilities"
 import { difyRequest, type DifyKind } from "#src/util/difyURL"
 
 class BotError extends Error {
@@ -28,19 +28,16 @@ type ErrorReporter<T extends ErrorReport> =
   ((report: T) => Promise<void>) &
   ((message: string) => Promise<void>)
 
-const DIFY_TIMEOUT = 2_000 // 8_000
-const DIFY_RETRY_TIMEOUT = 10_000 // 120_000
+const DIFY_TIMEOUT = 8_000
+const DIFY_RETRY_TIMEOUT = 120_000
 
 type RetryState = "Running" | "HalfClosed" | "Closed"
 
-const retryTimeDefault = 5_000 // 4 * 60 * 60 * 1_000
+const retryTimeDefault = 4 * 60 * 60 * 1_000
 const retryTimeMap = new Map<RetryState, number>([
-  // ["Running", 1 * 60 * 60 * 1_000],
-  // ["HalfClosed", 4 * 60 * 60 * 1_000],
-  // ["Closed", 4 * 60 * 60 * 1_000],
-  ["Running", 5 * 1_000],
-  ["HalfClosed", 5 * 1_000],
-  ["Closed", 5 * 1_000],
+  ["Running", 1 * 60 * 60 * 1_000],
+  ["HalfClosed", 4 * 60 * 60 * 1_000],
+  ["Closed", 4 * 60 * 60 * 1_000],
 ])
 
 const retryRequest = async (kind: DifyKind) => {
@@ -61,7 +58,6 @@ class RetryStateMachine {
 
   stepFailure = async () => {
     const retryTime = retryTimeMap.get(this.state) ?? retryTimeDefault
-    this.setRetryCooldown(this.getKind(), retryTime)
     switch (this.state) {
       case ("Running"): {
         this.state = "HalfClosed"
@@ -78,27 +74,23 @@ class RetryStateMachine {
         this.state = "Closed"
         break
       }
-
-      default: {
-        const _exhaustive: never = this.state
-        throw (_exhaustive)
-      }
     }
+    await this.setRetryCooldown(this.getKind(), retryTime)
   }
 
   private stepSuccess = () => { this.state = "Running" }
 
-  setRetryCooldown = (kind: DifyKind, retryTime: number) => {
-    setTimeout(async () => {
-      if (this.state === "Running") { return }
-      const isRetry = await retryRequest(kind)
-      if (isRetry) {
-        this.stepSuccess()
-        await this.recover()
-      } else {
-        await this.stepFailure()
-      }
-    }, retryTime)
+  setRetryCooldown = async (kind: DifyKind, retryTime: number) => {
+    await sleep(retryTime)
+
+    if (this.state === "Running") { return }
+    const isRetry = await retryRequest(kind)
+    if (isRetry) {
+      this.stepSuccess()
+      await this.recover()
+    } else {
+      await this.stepFailure()
+    }
   }
 
   get running() { return (this.state === "Running") }
@@ -151,7 +143,7 @@ export abstract class CoreBot<T extends ErrorReport> {
   }
 
   private coreInit = () => {
-    this.client.on(Events.InteractionCreate, botErrorCommandsInteraction)
+    this.client.on(Events.InteractionCreate, detachVoidPromise(botErrorCommandsInteraction))
   }
 
   init = () => {
@@ -165,7 +157,7 @@ export abstract class CoreBot<T extends ErrorReport> {
   protected portErrorReport: ErrorReporter<T> = async (arg: T | string) => {
     const channelID = await errorDB.getFirst()
     const channel =
-      await this.client.channels.cache.get(channelID) ??
+      this.client.channels.cache.get(channelID) ??
       await this.client.channels.fetch(channelID)
 
     if (!(channel?.isSendable())) { return }
@@ -180,39 +172,41 @@ export abstract class CoreBot<T extends ErrorReport> {
   protected wrapper = <Args extends unknown[]>(
     f: (...args: Args) => Promise<void>
   ) => {
-    return async (...args: Args) => {
-      if (!this.circuitBreaker.running) { return }
-      try {
-        await f(...args)
-      } catch (err) {
-        if (err instanceof BotError) {
-          await this.portErrorReport(
-            `Bot Error comes from ${err.from}:\n\`\`\`\n${err}\n\`\`\``
-          )
-        } else if (err instanceof DBError) {
-          await this.portErrorReport(
-            `DB Error comes from ${err.from}:\n\`\`\`\n${err}\n\`\`\``
-          )
-        } else if (err instanceof JsonResultError) {
-          await this.portErrorReport(
-            `${err.report.name}: ${err.report.message}\n\`\`\`\n${err.report.raw}\n\`\`\``
-          )
-        } else if (err instanceof ResultError) {
-          await this.portErrorReport(
-            `${err.report.name}: ${err.report.message}`
-          )
-        } else {
-          await this.portErrorReport(
-            `External Error:\n\`\`\`\n${err}\n\`\`\``
-          )
+    return detachVoidPromise(
+      async (...args: Args) => {
+        if (!this.circuitBreaker.running) { return }
+        try {
+          await f(...args)
+        } catch (err) {
+          if (err instanceof BotError) {
+            await this.portErrorReport(
+              `Bot Error comes from ${err.from}:\n\`\`\`\n${err}\n\`\`\``
+            )
+          } else if (err instanceof DBError) {
+            await this.portErrorReport(
+              `DB Error comes from ${err.from}:\n\`\`\`\n${err}\n\`\`\``
+            )
+          } else if (err instanceof JsonResultError) {
+            await this.portErrorReport(
+              `${err.report.name}: ${err.report.message}\n\`\`\`\n${err.report.raw}\n\`\`\``
+            )
+          } else if (err instanceof ResultError) {
+            await this.portErrorReport(
+              `${err.report.name}: ${err.report.message}`
+            )
+          } else {
+            await this.portErrorReport(
+              `External Error:\n\`\`\`\n` + String(err) + `\n\`\`\``
+            )
+          }
         }
       }
-    }
+    )
   }
 
   protected login = async (client: Client<true>) => {
     console.log(`Ready! Logged in as ${client.user.tag}`)
-    this.loginCallback()
+    await this.loginCallback()
   }
 
   protected logout = async () => {

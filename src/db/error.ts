@@ -29,7 +29,7 @@ class ErrorChannelDBImpl extends CoreDB<RawErrorChannelDB> {
         .addColumn("id", "integer", (col) => col.primaryKey())
         .addColumn("channel_id", "text", (col) => col.notNull())
         .execute()
-    } catch (err) {
+    } catch (_) {
       dbError("initializing Error DB")
     }
   }
