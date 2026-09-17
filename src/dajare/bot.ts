@@ -124,7 +124,7 @@ export class DajareBot extends CoreBot<MessageErrorReport> {
             }
 
             case ("Failure"): {
-              await this.retry()
+              void this.retry()
               break
             }
           }

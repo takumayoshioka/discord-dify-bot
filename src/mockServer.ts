@@ -14,8 +14,6 @@ const requestURL = getWorkflowURL()
 const host = requestURL.hostname
 const port = Number(requestURL.port)
 
-let cnt = 0
-
 const server = createServer((request, response) => {
   const body = async () => {
     if (
@@ -40,16 +38,9 @@ const server = createServer((request, response) => {
       const body = unwrap(parseRequest(rawBody))
       const translatedText = [...getRequest(body)].reverse().join("")
 
-      cnt++
-      if (5 <= cnt && cnt < 10) {
-        response.writeHead(400, {
-          "Content-Type": "application/json; charset=utf-8",
-        })
-      } else {
-        response.writeHead(200, {
-          "Content-Type": "application/json; charset=utf-8",
-        })
-      }
+      response.writeHead(200, {
+        "Content-Type": "application/json; charset=utf-8",
+      })
 
       response.end(JSON.stringify(
         createResponse(translatedText)
@@ -64,7 +55,7 @@ const server = createServer((request, response) => {
       }))
     }
   }
-  detachVoidPromise(body)
+  detachVoidPromise(body)()
 })
 
 server.listen(port, host, () => {

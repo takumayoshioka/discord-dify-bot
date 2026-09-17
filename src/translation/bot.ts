@@ -277,11 +277,12 @@ export class TranslationBot extends CoreBot<MessageErrorReport> {
             }
 
             case ("Failure"): {
-              await this.retry()
+              void this.retry()
               break
             }
           }
         }
+        await messageDB.dequeue(rowID)
         await this.portErrorReport(
           difyErrorToMessageError(translatedRes.errorReport, message))
         break
@@ -328,7 +329,7 @@ export class TranslationBot extends CoreBot<MessageErrorReport> {
             }
 
             case ("Failure"): {
-              await this.retry()
+              void this.retry()
               break
             }
           }
@@ -405,7 +406,7 @@ export class TranslationBot extends CoreBot<MessageErrorReport> {
             }
 
             case ("Failure"): {
-              await this.retry()
+              void this.retry()
               break
             }
           }

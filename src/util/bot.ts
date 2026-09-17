@@ -49,6 +49,7 @@ const retryRequest = async (kind: DifyKind) => {
 }
 
 class RetryStateMachine {
+  private cooldown = false
   constructor(
     private state: RetryState,
     private getKind: () => DifyKind,
@@ -57,6 +58,8 @@ class RetryStateMachine {
   ) { }
 
   stepFailure = async () => {
+    if (this.cooldown) { return }
+    this.cooldown = true
     const retryTime = retryTimeMap.get(this.state) ?? retryTimeDefault
     switch (this.state) {
       case ("Running"): {
@@ -85,6 +88,7 @@ class RetryStateMachine {
 
     if (this.state === "Running") { return }
     const isRetry = await retryRequest(kind)
+    this.cooldown = false
     if (isRetry) {
       this.stepSuccess()
       await this.recover()
@@ -104,6 +108,7 @@ export abstract class CoreBot<T extends ErrorReport> {
     () => this.leave(),
     () => this.recover()
   )
+
   constructor(
     protected readonly client: Client<boolean>,
     protected readonly initFlag: boolean
