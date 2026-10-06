@@ -48,9 +48,6 @@ export const createRequestHeader = (kind: DifyKind) => {
   return headers
 }
 
-// class HttpError extends Error { };
-// class Timeout extends Error { };
-
 // set timeout 
 const setTimeoutRaceWithDify = (
   targetPromise: Promise<DifyResult>,
@@ -66,7 +63,6 @@ const setTimeoutRaceWithDify = (
           raw: undefined
         }
       })
-      // reject(new Timeout(`Timeout: ${String(targetPromise)}`))
     }, timeout)
   })
 

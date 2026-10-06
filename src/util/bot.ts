@@ -8,7 +8,7 @@ import { ResultError, type ErrorReport } from "#src/util/result"
 import { errorDB } from "#src/db/manager"
 import { botErrorCommandsInteraction, commands } from "#src/util/commands"
 import { DBError } from "#src/db/common"
-import { JsonResultError } from "#src/util/jsonFormat"
+import { DifyEmptyMsg, JsonResultError } from "#src/util/jsonFormat"
 import { detachVoidPromise, sleep } from "#src/util/utilities"
 import { difyRequest, type DifyKind } from "#src/util/difyURL"
 
@@ -199,6 +199,8 @@ export abstract class CoreBot<T extends ErrorReport> {
             await this.portErrorReport(
               `${err.report.name}: ${err.report.message}`
             )
+          } else if (err instanceof DifyEmptyMsg) {
+            return
           } else {
             await this.portErrorReport(
               `External Error:\n\`\`\`\n` + String(err) + `\n\`\`\``

@@ -93,8 +93,6 @@ export class DajareBot extends CoreBot<MessageErrorReport> {
     switch (evaluateRes.status) {
       case ("Success"): {
         const res = evaluateRes.result
-        // do not send empty message
-        if (res.length === 0) { return }
         if (res === NOT_DAJARE) { return }
 
         await message.reply({
@@ -112,8 +110,6 @@ export class DajareBot extends CoreBot<MessageErrorReport> {
           switch (retryEvaluateRes.status) {
             case ("Success"): {
               const res = retryEvaluateRes.result
-              // do not send empty message
-              if (res.length === 0) { return }
               if (res === NOT_DAJARE) { return }
 
               await message.reply({

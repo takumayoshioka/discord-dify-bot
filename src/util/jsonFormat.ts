@@ -19,6 +19,8 @@ export class JsonResultError extends ResultError {
   }
 }
 
+export class DifyEmptyMsg extends Error { }
+
 const jsonFormatHandler = (err: unknown, payload: string, raw: string)
   : JsonFormatErrorReport => {
   if (err instanceof SyntaxError) {
@@ -39,7 +41,7 @@ const difyRequest = z.object({
 })
 
 const difyResponse = z.object({
-  answer: z.string().min(1)
+  answer: z.string()
 })
 
 const difyErrorResponse = z.object({
@@ -110,7 +112,12 @@ export const parseRequest = (json: string) => {
 }
 
 export const parseResponse = (json: string) => {
-  return parserGenerator(difyResponse, json, "parsing Dify Response")
+  const res = parserGenerator(difyResponse, json, "parsing Dify Response")
+  if (res.status === "Success" && res.result.answer === "") {
+    throw new DifyEmptyMsg
+  } else {
+    return res
+  }
 }
 
 export const parseErrorResponse = (json: string) => {
