@@ -13,6 +13,9 @@ import {
   type User,
   type PartialUser,
   Events,
+  Embed,
+  EmbedBuilder,
+  MessageReferenceType,
 } from "discord.js"
 
 import {
@@ -32,6 +35,7 @@ import {
 import { CoreBot } from "#src/util/bot"
 import { botConnectionCommandsInteraction, commands } from "./commands.js"
 import { difyErrorToMessageError, type MessageErrorReport } from "#src/util/messageError"
+import { arrayAttachments } from "#src/util/utilities"
 
 const isTextChannel = (channel: Channel): channel is TextChannel => {
   return channel instanceof TextChannel
@@ -85,7 +89,10 @@ class MessageSender {
 
   // send translated messages from message database
   // waitingChannelIDs must have targetChannel.id in this function
-  sendTranslatedContentBody = async (targetChannel: TextChannel) => {
+  sendTranslatedContentBody = async (
+    targetChannel: TextChannel,
+    embeds: (Embed | EmbedBuilder)[]
+  ) => {
     const row = await messageDB.getTranslatedContent(targetChannel.id)
 
     if (!row) {
@@ -103,13 +110,14 @@ class MessageSender {
       case ("Success"): {
         await webhook.send({
           content: row.translated_content,
+          embeds: embeds,
           files: files.result,
           username: row.display_name,
           avatarURL: row.avatar_url,
         })
 
         await messageDB.dequeue(row.id)
-        await this.sendTranslatedContentBody(targetChannel)
+        await this.sendTranslatedContentBody(targetChannel, embeds)
         break
       }
 
@@ -120,12 +128,15 @@ class MessageSender {
     }
   }
 
-  sendTranslatedContent = async (targetChannel: TextChannel) => {
+  sendTranslatedContent = async (
+    targetChannel: TextChannel,
+    embeds: (Embed | EmbedBuilder)[]
+  ) => {
     if (this.waitingChannelIDs.has(targetChannel.id)) {
       return
     } else {
       this.waitingChannelIDs.add(targetChannel.id)
-      await this.sendTranslatedContentBody(targetChannel)
+      await this.sendTranslatedContentBody(targetChannel, embeds)
     }
   }
 }
@@ -221,14 +232,49 @@ export class TranslationBot extends CoreBot<MessageErrorReport> {
     if (!isTextChannel(targetChannel!)) { return }
 
     const content = message.content
-    const attachedFiles = [...message.attachments.values()]
-      .map((attachment) => ({
-        attachment: attachment.url,
-        name: attachment.name
-      }))
+
+    const ref = message.reference
+    const forwardSnapshot = (ref?.type === MessageReferenceType.Forward)
+      ? await (async () => {
+        if (ref.messageId === undefined) { return undefined }
+
+        const originalChannel =
+          (this.client.channels.cache.get(ref.channelId))
+          ?? (await this.client.channels.fetch(ref.channelId))
+        if (!isTextChannel(originalChannel!)) { return undefined }
+
+        const cachedOriginal = originalChannel.messages.cache.get(ref.messageId)
+        const original = (cachedOriginal?.author) ? cachedOriginal :
+          (await originalChannel.messages.fetch(ref.messageId))
+
+        return original
+      })()
+      : undefined
+
+    const attachedFiles = arrayAttachments(message.attachments)
+
+    const { embeds: forwardEmbeds, files } = (forwardSnapshot === undefined)
+      ? { embeds: [], files: attachedFiles }
+      : (() => {
+        const builder = new EmbedBuilder().setTitle(forwardSnapshot.url)
+
+        if (forwardSnapshot.content.length !== 0) {
+          builder.setDescription(forwardSnapshot.content)
+        }
+
+        return {
+          embeds: [builder, ...forwardSnapshot.embeds],
+          files: [
+            ...arrayAttachments(forwardSnapshot.attachments),
+            ...attachedFiles
+          ]
+        }
+      })()
 
     // does not send empty message
-    if (content.length === 0 && attachedFiles.length === 0) {
+    if (
+      content.length === 0 && files.length === 0 && forwardSnapshot === undefined
+    ) {
       return
     }
 
@@ -243,7 +289,7 @@ export class TranslationBot extends CoreBot<MessageErrorReport> {
     const rowID = await messageDB.enqueue(
       target.channelID,
       content,
-      JSON.stringify(attachedFiles),
+      JSON.stringify(files),
       displayName,
       avatarURL
     )
@@ -261,7 +307,7 @@ export class TranslationBot extends CoreBot<MessageErrorReport> {
     switch (translatedRes.status) {
       case ("Success"): {
         await messageDB.setTranslatedContent(rowID, translatedRes.result)
-        await this.sender.sendTranslatedContent(targetChannel)
+        await this.sender.sendTranslatedContent(targetChannel, forwardEmbeds)
         break
       }
 
@@ -272,7 +318,7 @@ export class TranslationBot extends CoreBot<MessageErrorReport> {
           switch (retryTranslatedRes.status) {
             case ("Success"): {
               await messageDB.setTranslatedContent(rowID, retryTranslatedRes.result)
-              await this.sender.sendTranslatedContent(targetChannel)
+              await this.sender.sendTranslatedContent(targetChannel, forwardEmbeds)
               break
             }
 
