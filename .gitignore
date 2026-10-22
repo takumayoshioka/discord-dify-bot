@@ -1,6 +1,9 @@
 # database
 db/*
 
+# build
+/build
+
 # Logs
 logs
 *.log
