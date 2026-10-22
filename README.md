@@ -56,7 +56,7 @@ This bot replies a translated message if you reacts an original message with any
 
 ### Requirement
 
-- Node.js (24.21.1) 
+- Node.js (24.18.0) 
 - Optional: Docker (29.7.1)
 
 ### Develpment Build
