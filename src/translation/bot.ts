@@ -27,6 +27,7 @@ import {
 import {
   connectDB,
   messageDB,
+  glossaryDB,
   type TranslationDirection
 } from "#src/db/manager"
 import { CoreBot } from "#src/util/bot"
@@ -49,9 +50,36 @@ const getAdditionalPrompt = (dir: TranslationDirection) => {
   })() + "\n翻訳するテキストは以下の通りです。\n"
 }
 
+const getAdditionalGlossary = async (
+  message: string, _dir: TranslationDirection
+) => {
+  const chars = Array.from(message)
+  const prefixes = chars.slice(1).map((char, i) => chars[i] + char)
+
+  if (prefixes.length === 0) { return "" }
+
+  const selectedRows = await glossaryDB.searchByPrefixes(prefixes)
+
+  return "\n使用する用語集は以下の通りです。\n"
+    + selectedRows.map(
+      ({ ja, en, hiragana, katakana, ja_abb, en_abb }) => {
+        const additionalJa = [hiragana, katakana, ja_abb].filter((s) => s).join(",")
+        const wordJa = (additionalJa.length === 0)
+          ? ja : `${ja}（${additionalJa}）`
+
+        const wordEn = (en_abb) ? `${en} (${en_abb})` : en
+
+        return `${wordJa}, ${wordEn}`
+      }
+    ).join("\n")
+}
+
 const translate = async (message: string, dir: TranslationDirection) => {
   return await difyRequest(
-    "translation", getAdditionalPrompt(dir) + message
+    "translation",
+    getAdditionalPrompt(dir)
+    + message
+    + await getAdditionalGlossary(message, dir)
   )
 }
 

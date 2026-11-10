@@ -12,6 +12,9 @@ import {
 import {
   ErrorDB
 } from "#src/db/error"
+import {
+  GlossaryDB
+} from "#src/db/glossary"
 import { rm, glob } from "node:fs/promises"
 
 // export type and error
@@ -34,11 +37,17 @@ export {
 const DATABASE_PATH = join(
   process.cwd(), "db"
 )
+
 const CHANNEL_DATABASE_PATH = join(
   DATABASE_PATH, "ChannelDB.sqlite"
 )
+
 const MSG_DATABASE_PATH = join(
   DATABASE_PATH, "MsgDB.sqlite"
+)
+
+const GLOSSARY_DATABASE_PATH = join(
+  DATABASE_PATH, "GlossaryDB.sqlite"
 )
 
 const MSG_DATABASE_PATH_RM = join(
@@ -53,3 +62,4 @@ export const connectDB = await ConnectDB.open(CHANNEL_DATABASE_PATH)
 export const dajareDB = await DajareDB.open(CHANNEL_DATABASE_PATH)
 export const errorDB = await ErrorDB.open(CHANNEL_DATABASE_PATH)
 export const messageDB = await MessageDB.open(MSG_DATABASE_PATH)
+export const glossaryDB = await GlossaryDB.open(GLOSSARY_DATABASE_PATH)
