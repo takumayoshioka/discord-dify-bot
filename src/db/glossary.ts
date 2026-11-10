@@ -1,5 +1,5 @@
 import { type DB, CoreDB, dbError, openDB } from "#src/db/common"
-import type { Generated } from "kysely"
+import { /* type Selectable, sql, */ type Generated } from "kysely"
 import { parse } from "csv-parse/sync"
 import { readFile } from "node:fs/promises"
 
@@ -62,8 +62,9 @@ class GlossaryDBImple extends CoreDB<RawGlossaryDB> {
 
       await initQuery.execute()
       await this.readCSV()
+      await this.createIndex()
     } catch (_) {
-      return dbError("initializing connection db")
+      return dbError(`initializing glossary db`)
     }
   }
 
@@ -166,6 +167,7 @@ class GlossaryDBImple extends CoreDB<RawGlossaryDB> {
     for (const col of searchPrefixes) {
       await this.db.schema
         .createIndex(`${col}_index`)
+        .ifNotExists()
         .on(GLOSSARY_DB_TABLE)
         .column(col)
         .execute()
