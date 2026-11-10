@@ -36,7 +36,7 @@ const server = createServer((request, response) => {
 
     try {
       const body = unwrap(parseRequest(rawBody))
-      const translatedText = [...getRequest(body)].reverse().join("")
+      const translatedText = [...getRequest(body)].join("")
 
       response.writeHead(200, {
         "Content-Type": "application/json; charset=utf-8",

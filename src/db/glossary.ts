@@ -1,5 +1,7 @@
 import { type DB, CoreDB, dbError, openDB } from "#src/db/common"
 import type { Generated } from "kysely"
+import { parse } from "csv-parse/sync"
+import { readFile } from "node:fs/promises"
 
 export class GlossaryRemoveFailure extends Error { }
 
@@ -59,9 +61,55 @@ class GlossaryDBImple extends CoreDB<RawGlossaryDB> {
       }
 
       await initQuery.execute()
+      await this.readCSV()
     } catch (_) {
       return dbError("initializing connection db")
     }
+  }
+
+  readCSV = async () => {
+    const csvRows = parse<Record<string, string>>(
+      await readFile("Glossary.csv"),
+      { columns: true, bom: true, skip_empty_lines: true }
+    ) as Record<
+      "日本語" | "英語" | "読み（ひらがな）" | "読み（かたかな）" | "日本語（略称）" | "英語（略称）",
+      string
+    >[]
+
+    const dbRows = csvRows.map((row, i) => {
+      const ja = row["日本語"]
+      const en = row["英語"]
+      const hiragana = row["読み（ひらがな）"]
+      const katakana = row["読み（かたかな）"]
+      const ja_abb = row["日本語（略称）"]
+      const en_abb = row["英語（略称）"]
+      const ja_prefix = genPrefix(ja)
+      const hiragana_prefix = genPrefix(hiragana)
+      const katakana_prefix = genPrefix(katakana)
+      const ja_abb_prefix = genPrefix(ja_abb)
+
+      return {
+        id: i + 1,
+        ja,
+        en,
+        hiragana,
+        katakana,
+        ja_abb,
+        en_abb,
+        ja_prefix,
+        hiragana_prefix,
+        katakana_prefix,
+        ja_abb_prefix
+      }
+    })
+
+    await this.db.transaction().execute(async trx => {
+      await trx.deleteFrom(GLOSSARY_DB_TABLE).execute()
+
+      if (dbRows.length > 0) {
+        await trx.insertInto(GLOSSARY_DB_TABLE).values(dbRows).execute()
+      }
+    })
   }
 
   // enqueue row into DB

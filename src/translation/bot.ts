@@ -60,7 +60,7 @@ const getAdditionalGlossary = async (
 
   const selectedRows = await glossaryDB.searchByPrefixes(prefixes)
 
-  return "\n使用する用語集は以下の通りです。\n"
+  return "\n\n【翻訳に使用する用語集】\n"
     + selectedRows.map(
       ({ ja, en, hiragana, katakana, ja_abb, en_abb }) => {
         const additionalJa = [hiragana, katakana, ja_abb].filter((s) => s).join(",")
