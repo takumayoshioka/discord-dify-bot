@@ -33,6 +33,9 @@ export {
   ErrorSetFailure,
   ErrorRemoveFailure
 } from "#src/db/error"
+export {
+  type CoreGlossaryRow
+} from "#src/db/glossary"
 
 const DATABASE_PATH = join(
   process.cwd(), "db"

@@ -1,15 +1,14 @@
 import { type DB, CoreDB, dbError, openDB } from "#src/db/common"
-import { /* type Selectable, sql, */ type Generated } from "kysely"
+import { /* type Selectable, sql, */ Kysely, type Generated, type Insertable } from "kysely"
 import { parse } from "csv-parse/sync"
 import { readFile } from "node:fs/promises"
 
 export class GlossaryRemoveFailure extends Error { }
 
 const GLOSSARY_DB_TABLE = "glossary_table"
+const SINGLE_GLOSSARY_DB_TABLE = "single_glossary_table"
 
-// original (user-defined) properties
-type OriginalGlossaryDB = {
-  id: Generated<number>,
+export type CoreGlossaryRow = {
   ja: string,
   en: string,
   hiragana: string | null,
@@ -18,15 +17,28 @@ type OriginalGlossaryDB = {
   en_abb: string | null
 }
 
+// original (user-defined) properties
+type OriginalGlossaryDB = {
+  id: Generated<number>
+} & CoreGlossaryRow
+
 const searchPrefixes = [
   "ja_prefix", "hiragana_prefix", "katakana_prefix", "ja_abb_prefix"
 ] as const
 
+type CSVHeader = Record<
+  "日本語" | "英語" | "読み（ひらがな）" | "読み（かたかな）" | "日本語（略称）" | "英語（略称）",
+  string
+>
+
+type GlossaryRow = OriginalGlossaryDB & {
+  [K in typeof searchPrefixes[number]]: string | null
+}
+
 // DB with prefixes for search queries
 type RawGlossaryDB = {
-  [GLOSSARY_DB_TABLE]: OriginalGlossaryDB & {
-    [K in typeof searchPrefixes[number]]: string | null
-  }
+  [SINGLE_GLOSSARY_DB_TABLE]: GlossaryRow,
+  [GLOSSARY_DB_TABLE]: GlossaryRow
 }
 
 // generates prefixes for search queries
@@ -37,6 +49,27 @@ function genPrefix(str: string | null) {
   return str.slice(0, 2)
 }
 
+const initGlossaryTable = (
+  db: Kysely<RawGlossaryDB>,
+  table: typeof GLOSSARY_DB_TABLE | typeof SINGLE_GLOSSARY_DB_TABLE
+) => {
+  let initQuery = db.schema.createTable(table)
+    .ifNotExists()
+    .addColumn("id", "integer", (col) => col.primaryKey())
+    .addColumn("ja", "text", (col) => col.notNull())
+    .addColumn("en", "text", (col) => col.notNull())
+    .addColumn("hiragana", "text")
+    .addColumn("katakana", "text")
+    .addColumn("ja_abb", "text")
+    .addColumn("en_abb", "text")
+
+  for (const key of searchPrefixes) {
+    initQuery = initQuery.addColumn(key, "text")
+  }
+
+  return initQuery
+}
+
 class GlossaryDBImple extends CoreDB<RawGlossaryDB> {
   static open = async (path: string) => {
     return new GlossaryDBImple(await openDB(path), GLOSSARY_DB_TABLE)
@@ -44,22 +77,10 @@ class GlossaryDBImple extends CoreDB<RawGlossaryDB> {
 
   init = async () => {
     try {
-      let initQuery =
-        this.db.schema
-          .createTable(GLOSSARY_DB_TABLE)
-          .ifNotExists()
-          .addColumn("id", "integer", (col) => col.primaryKey())
-          .addColumn("ja", "text", (col) => col.notNull())
-          .addColumn("en", "text", (col) => col.notNull())
-          .addColumn("hiragana", "text")
-          .addColumn("katakana", "text")
-          .addColumn("ja_abb", "text")
-          .addColumn("en_abb", "text")
+      const singleInitQuery = initGlossaryTable(this.db, SINGLE_GLOSSARY_DB_TABLE)
+      const initQuery = initGlossaryTable(this.db, GLOSSARY_DB_TABLE)
 
-      for (const key of searchPrefixes) {
-        initQuery = initQuery.addColumn(key, "text")
-      }
-
+      await singleInitQuery.execute()
       await initQuery.execute()
       await this.readCSV()
       await this.createIndex()
@@ -72,12 +93,9 @@ class GlossaryDBImple extends CoreDB<RawGlossaryDB> {
     const csvRows = parse<Record<string, string>>(
       await readFile("Glossary.csv"),
       { columns: true, bom: true, skip_empty_lines: true }
-    ) as Record<
-      "日本語" | "英語" | "読み（ひらがな）" | "読み（かたかな）" | "日本語（略称）" | "英語（略称）",
-      string
-    >[]
+    ) as CSVHeader[]
 
-    const dbRows = csvRows.map((row, i) => {
+    const { dbSingleRows, dbRows } = csvRows.reduce(({ dbSingleRows, dbRows }, row, i) => {
       const ja = row["日本語"]
       const en = row["英語"]
       const hiragana = row["読み（ひらがな）"]
@@ -89,7 +107,7 @@ class GlossaryDBImple extends CoreDB<RawGlossaryDB> {
       const katakana_prefix = genPrefix(katakana)
       const ja_abb_prefix = genPrefix(ja_abb)
 
-      return {
+      const newRow = {
         id: i + 1,
         ja,
         en,
@@ -102,13 +120,33 @@ class GlossaryDBImple extends CoreDB<RawGlossaryDB> {
         katakana_prefix,
         ja_abb_prefix
       }
+
+      if (ja.length > 1) {
+        return {
+          dbSingleRows,
+          dbRows: [...dbRows, newRow]
+        }
+      } else {
+        return {
+          dbSingleRows: [...dbSingleRows, newRow],
+          dbRows
+        }
+      }
+    }, {
+      dbSingleRows: [] as Insertable<GlossaryRow>[],
+      dbRows: [] as Insertable<GlossaryRow>[]
     })
 
     await this.db.transaction().execute(async trx => {
       await trx.deleteFrom(GLOSSARY_DB_TABLE).execute()
+      await trx.deleteFrom(SINGLE_GLOSSARY_DB_TABLE).execute()
 
       if (dbRows.length > 0) {
         await trx.insertInto(GLOSSARY_DB_TABLE).values(dbRows).execute()
+      }
+
+      if (dbSingleRows.length > 0) {
+        await trx.insertInto(SINGLE_GLOSSARY_DB_TABLE).values(dbSingleRows).execute()
       }
     })
   }
@@ -174,15 +212,27 @@ class GlossaryDBImple extends CoreDB<RawGlossaryDB> {
     }
   }
 
+  // search rows by one character
+  searchBySingleChar = async (char: string): Promise<CoreGlossaryRow[]> => {
+    if (char.length === 0 || char.length > 1) {
+      return []
+    }
+
+    return await this.db.selectFrom(SINGLE_GLOSSARY_DB_TABLE)
+      .select(["ja", "hiragana", "katakana", "ja_abb", "en", "en_abb"])
+      .where(exp => exp("ja", "=", char))
+      .execute()
+  }
+
   // search rows by prefixes
-  searchByPrefixes = async (prefixes: string[]) => {
+  searchByTwoCharPrefixes = async (prefixes: string[]): Promise<CoreGlossaryRow[]> => {
     return await this.db.selectFrom(GLOSSARY_DB_TABLE)
       .select(["ja", "hiragana", "katakana", "ja_abb", "en", "en_abb"])
-      .where(eb => eb.or([
-        eb("ja_prefix", "in", prefixes),
-        eb("hiragana_prefix", "in", prefixes),
-        eb("katakana_prefix", "in", prefixes),
-        eb("ja_abb_prefix", "in", prefixes),
+      .where(exp => exp.or([
+        exp("ja_prefix", "in", prefixes),
+        exp("hiragana_prefix", "in", prefixes),
+        exp("katakana_prefix", "in", prefixes),
+        exp("ja_abb_prefix", "in", prefixes),
       ]))
       .execute()
   }

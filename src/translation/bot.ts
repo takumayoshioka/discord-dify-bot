@@ -28,7 +28,8 @@ import {
   connectDB,
   messageDB,
   glossaryDB,
-  type TranslationDirection
+  type TranslationDirection,
+  type CoreGlossaryRow
 } from "#src/db/manager"
 import { CoreBot } from "#src/util/bot"
 import { botConnectionCommandsInteraction, commands } from "./commands.js"
@@ -54,11 +55,16 @@ const getAdditionalGlossary = async (
   message: string, _dir: TranslationDirection
 ) => {
   const chars = Array.from(message)
-  const prefixes = chars.slice(1).map((char, i) => chars[i] + char)
+  const singleCharSet = new Set<CoreGlossaryRow>
+  const prefixes = await Promise.all(chars.slice(1).map(async (char, i) => {
+    (await glossaryDB.searchBySingleChar(chars[i]!))
+      .forEach((row) => singleCharSet.add(row))
+    return chars[i]! + char
+  }))
 
-  if (prefixes.length === 0) { return "" }
+  if (prefixes.length === 0 && singleCharSet.size === 0) { return "" }
 
-  const selectedRows = await glossaryDB.searchByPrefixes(prefixes)
+  const selectedRows = [...singleCharSet, ...(await glossaryDB.searchByTwoCharPrefixes(prefixes))]
 
   return "\n\n【翻訳に使用する用語集】\n"
     + selectedRows.map(
