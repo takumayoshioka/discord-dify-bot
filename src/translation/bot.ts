@@ -51,20 +51,39 @@ const getAdditionalPrompt = (dir: TranslationDirection) => {
   })() + "\n翻訳するテキストは以下の通りです。\n"
 }
 
-const getAdditionalGlossary = async (
-  message: string, _dir: TranslationDirection
+const getAdditionalGlossaryRows = async (
+  message: string, dir: TranslationDirection
 ) => {
-  const chars = Array.from(message)
-  const singleCharSet = new Set<CoreGlossaryRow>
-  const prefixes = await Promise.all(chars.slice(1).map(async (char, i) => {
-    (await glossaryDB.searchBySingleChar(chars[i]!))
-      .forEach((row) => singleCharSet.add(row))
-    return chars[i]! + char
-  }))
+  switch (dir) {
+    case "ja-to-en": {
+      const chars = Array.from(message)
+      const singleCharSet = new Set<CoreGlossaryRow>
+      const prefixes = await Promise.all(chars.slice(1).map(async (char, i) => {
+        (await glossaryDB.searchBySingleChar(chars[i]!))
+          .forEach((row) => singleCharSet.add(row))
+        return chars[i]! + char
+      }))
 
-  if (prefixes.length === 0 && singleCharSet.size === 0) { return "" }
+      if (prefixes.length === 0 && singleCharSet.size === 0) { return [] }
 
-  const selectedRows = [...singleCharSet, ...(await glossaryDB.searchByTwoCharPrefixes(prefixes))]
+      return [...singleCharSet, ...(await glossaryDB.searchByTwoCharPrefixes(prefixes))]
+    }
+
+    case "en-to-ja": {
+      const words = message.toLowerCase().split(/\s+/)
+      if (words.length === 0) { return [] }
+
+      return await glossaryDB.searchByWord(words)
+    }
+  }
+}
+
+const getAdditionalGlossary = async (
+  message: string, dir: TranslationDirection
+) => {
+  const selectedRows = await getAdditionalGlossaryRows(message, dir)
+
+  if (selectedRows.length === 0) { return "" }
 
   return "\n\n【翻訳に使用する用語集】\n"
     + selectedRows.map(

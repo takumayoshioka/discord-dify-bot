@@ -7,6 +7,7 @@ export class GlossaryRemoveFailure extends Error { }
 
 const GLOSSARY_DB_TABLE = "glossary_table"
 const SINGLE_GLOSSARY_DB_TABLE = "single_glossary_table"
+const ENGLISH_KEYWORDS_DB_TABLE = "english_keywords_table"
 
 export type CoreGlossaryRow = {
   ja: string,
@@ -35,10 +36,16 @@ type GlossaryRow = OriginalGlossaryDB & {
   [K in typeof searchPrefixes[number]]: string | null
 }
 
+type EnKeywordRow = {
+  id: Generated<number>,
+  keyword: string
+}
+
 // DB with prefixes for search queries
 type RawGlossaryDB = {
   [SINGLE_GLOSSARY_DB_TABLE]: GlossaryRow,
-  [GLOSSARY_DB_TABLE]: GlossaryRow
+  [GLOSSARY_DB_TABLE]: GlossaryRow,
+  [ENGLISH_KEYWORDS_DB_TABLE]: EnKeywordRow
 }
 
 // generates prefixes for search queries
@@ -48,6 +55,15 @@ function genPrefix(str: string | null) {
   if (str === null) { return null }
   return str.slice(0, 2)
 }
+
+const excludedWords = new Set([
+  "a", "an", "the",
+  "of", "in", "on", "at", "to", "for", "from",
+  "with", "by", "as", "into", "onto", "upon",
+  "about", "above", "below", "under", "over",
+  "between", "among", "through", "during",
+  "before", "after", "without", "within",
+])
 
 const initGlossaryTable = (
   db: Kysely<RawGlossaryDB>,
@@ -82,6 +98,12 @@ class GlossaryDBImple extends CoreDB<RawGlossaryDB> {
 
       await singleInitQuery.execute()
       await initQuery.execute()
+      await this.db.schema.createTable(ENGLISH_KEYWORDS_DB_TABLE)
+        .ifNotExists()
+        .addColumn("id", "integer")
+        .addColumn("keyword", "text", (col) => col.notNull())
+        .execute()
+
       await this.readCSV()
       await this.createIndex()
     } catch (_) {
@@ -95,7 +117,7 @@ class GlossaryDBImple extends CoreDB<RawGlossaryDB> {
       { columns: true, bom: true, skip_empty_lines: true }
     ) as CSVHeader[]
 
-    const { dbSingleRows, dbRows } = csvRows.reduce(({ dbSingleRows, dbRows }, row, i) => {
+    const { dbSingleRows, dbRows, dbEnKeyRows } = csvRows.reduce(({ dbSingleRows, dbRows, dbEnKeyRows }, row, i) => {
       const ja = row["日本語"]
       const en = row["英語"]
       const hiragana = row["読み（ひらがな）"]
@@ -121,25 +143,33 @@ class GlossaryDBImple extends CoreDB<RawGlossaryDB> {
         ja_abb_prefix
       }
 
+      const newEnKeyRows = [...en.toLowerCase().split(/\s+/), ...en_abb.toLowerCase().split(/\s+/)]
+        .filter((word) => !excludedWords.has(word))
+        .map((word) => { return { id: i + 1, keyword: word } })
+
       if (ja.length > 1) {
         return {
           dbSingleRows,
-          dbRows: [...dbRows, newRow]
+          dbRows: [...dbRows, newRow],
+          dbEnKeyRows: [...dbEnKeyRows, ...newEnKeyRows]
         }
       } else {
         return {
           dbSingleRows: [...dbSingleRows, newRow],
-          dbRows
+          dbRows,
+          dbEnKeyRows: [...dbEnKeyRows, ...newEnKeyRows]
         }
       }
     }, {
       dbSingleRows: [] as Insertable<GlossaryRow>[],
-      dbRows: [] as Insertable<GlossaryRow>[]
+      dbRows: [] as Insertable<GlossaryRow>[],
+      dbEnKeyRows: [] as Insertable<EnKeywordRow>[]
     })
 
     await this.db.transaction().execute(async trx => {
       await trx.deleteFrom(GLOSSARY_DB_TABLE).execute()
       await trx.deleteFrom(SINGLE_GLOSSARY_DB_TABLE).execute()
+      await trx.deleteFrom(ENGLISH_KEYWORDS_DB_TABLE).execute()
 
       if (dbRows.length > 0) {
         await trx.insertInto(GLOSSARY_DB_TABLE).values(dbRows).execute()
@@ -147,6 +177,10 @@ class GlossaryDBImple extends CoreDB<RawGlossaryDB> {
 
       if (dbSingleRows.length > 0) {
         await trx.insertInto(SINGLE_GLOSSARY_DB_TABLE).values(dbSingleRows).execute()
+      }
+
+      if (dbEnKeyRows.length > 0) {
+        await trx.insertInto(ENGLISH_KEYWORDS_DB_TABLE).values(dbEnKeyRows).execute()
       }
     })
   }
@@ -209,10 +243,24 @@ class GlossaryDBImple extends CoreDB<RawGlossaryDB> {
         .on(GLOSSARY_DB_TABLE)
         .column(col)
         .execute()
+
+      await this.db.schema
+        .createIndex(`${col}_index`)
+        .ifNotExists()
+        .on(SINGLE_GLOSSARY_DB_TABLE)
+        .column(col)
+        .execute()
     }
+
+    await this.db.schema
+      .createIndex("keyword_index")
+      .ifNotExists()
+      .on(ENGLISH_KEYWORDS_DB_TABLE)
+      .column("keyword")
+      .execute()
   }
 
-  // search rows by one character
+  // search rows by one character (JP)
   searchBySingleChar = async (char: string): Promise<CoreGlossaryRow[]> => {
     if (char.length === 0 || char.length > 1) {
       return []
@@ -224,7 +272,7 @@ class GlossaryDBImple extends CoreDB<RawGlossaryDB> {
       .execute()
   }
 
-  // search rows by prefixes
+  // search rows by prefixes (JP)
   searchByTwoCharPrefixes = async (prefixes: string[]): Promise<CoreGlossaryRow[]> => {
     return await this.db.selectFrom(GLOSSARY_DB_TABLE)
       .select(["ja", "hiragana", "katakana", "ja_abb", "en", "en_abb"])
@@ -234,6 +282,16 @@ class GlossaryDBImple extends CoreDB<RawGlossaryDB> {
         exp("katakana_prefix", "in", prefixes),
         exp("ja_abb_prefix", "in", prefixes),
       ]))
+      .execute()
+  }
+
+  // search rows by word (EN)
+  searchByWord = async (words: string[]): Promise<CoreGlossaryRow[]> => {
+    return await this.db.selectFrom(`${ENGLISH_KEYWORDS_DB_TABLE} as k`)
+      .innerJoin(`${GLOSSARY_DB_TABLE} as g`, "g.id", "k.id")
+      .select(["g.ja", "g.hiragana", "g.katakana", "g.ja_abb", "g.en", "g.en_abb"])
+      .where("k.keyword", "in", words)
+      .distinct()
       .execute()
   }
 }
