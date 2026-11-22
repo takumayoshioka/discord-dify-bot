@@ -76,7 +76,8 @@ const interactionSet = async (
     if (err instanceof ErrorSetFailure) {
       await interaction.editReply("Set failure.")
     } else {
-      botError("set-error-ch command")
+      await interaction.editReply("Failure.")
+      return botError("set-error-ch command", err)
     }
   }
 }
@@ -98,7 +99,8 @@ const interactionDisconnect = async (
     if (err instanceof ErrorRemoveFailure) {
       await interaction.editReply("Removal failure.")
     } else {
-      botError("remove-error-ch command")
+      await interaction.editReply("Failure.")
+      botError("remove-error-ch command", err)
     }
   }
 }
@@ -114,7 +116,8 @@ const interactionShowAll = async (
     if (err instanceof NoErrorReportChannel) {
       await interaction.editReply("No error report channel")
     } else {
-      botError("show-error-ch command")
+      await interaction.editReply("Failure.")
+      return botError("show-error-ch command", err)
     }
   }
 }
@@ -123,8 +126,13 @@ const interactionResetChDB = async (
   interaction: ChatInputCommandInteraction
 ) => {
   await interaction.deferReply()
-  await errorDB.reset()
-  await interaction.editReply("Channel DB cleared")
+  try {
+    await errorDB.reset()
+    await interaction.editReply("Channel DB cleared")
+  } catch (err) {
+    await interaction.editReply("Failure.")
+    return botError("reset-error-ch command", err)
+  }
 }
 
 // slash command interaction

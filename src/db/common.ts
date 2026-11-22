@@ -1,22 +1,34 @@
 import { mkdir } from "node:fs/promises"
 import { dirname } from "node:path"
-
 import Database from "better-sqlite3"
 import {
   Kysely,
   SqliteDialect
 } from "kysely"
 
-export class DBError extends Error {
+import { InternalError } from "#src/util/utilities"
+
+export class DBError extends InternalError {
   from: string
-  constructor(name: string, from: string) {
+  constructor(name: string, from: string, cause?: Error) {
     super(name)
     this.from = from
+    this.cause = cause
+  }
+
+  override toString = () => {
+    const errMsg = (this.cause && this.cause instanceof Error)
+      ? `:\n\`\`\n${this.cause?.toString()}\n\`\`\`` : ""
+    return `DB  Error comes from ${this.from}${errMsg}`
   }
 }
 
-export const dbError = (from: string): never => {
-  throw new DBError("DB Error", from)
+export const dbError = (from: string, err: unknown): never => {
+  throw new DBError(
+    "DB Error",
+    from,
+    (err instanceof Error) ? err : undefined
+  )
 }
 
 // open SQLiteDB file and returns it as DB
@@ -33,8 +45,8 @@ const openSQLiteDB = async (path: string) => {
       sqlite.close()
       throw err
     }
-  } catch (_) {
-    return dbError(`creating SQLite DB (path: ${path})`)
+  } catch (err) {
+    return dbError(`creating SQLite DB (path: ${path})`, err)
   }
 }
 

@@ -4,7 +4,6 @@ import { readFile } from "node:fs/promises"
 import { type DB, CoreDB, dbError, openDB } from "#src/db/common"
 import { glossaryCSVPath, updateSheetCSV } from "#src/util/spreadSheet"
 import { parseGlossaryCSV, ZodResultError } from "#src/util/zodFormat"
-import { ResultError } from "#src/util/result"
 
 export class GlossaryRemoveFailure extends Error { }
 
@@ -104,11 +103,8 @@ class GlossaryDBImple extends CoreDB<RawGlossaryDB> {
 
       await this.readCSV()
       await this.createIndex()
-    } catch (e) {
-      if (e instanceof ResultError) {
-        throw e
-      }
-      return dbError(`initializing glossary db`)
+    } catch (err) {
+      return dbError(`initializing glossary db`, err)
     }
   }
 

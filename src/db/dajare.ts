@@ -30,8 +30,8 @@ class DajareDBImple extends CoreDB<RawDajareDB> {
         .addColumn("id", "integer", (col) => col.primaryKey())
         .addColumn("channel_id", "text", (col) => col.notNull())
         .execute()
-    } catch (_) {
-      dbError("initializing Dajare DB")
+    } catch (err) {
+      return dbError("initializing Dajare DB", err)
     }
   }
 

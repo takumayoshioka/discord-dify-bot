@@ -9,7 +9,7 @@ export type ZodResult<T> = Result<T, ZodFormatErrorReport>
 export type ZodFormatErrorReport = {
   name: ZOD_FORMAT_ERROR_NAME,
   message: string,
-  raw: string | Buffer<ArrayBufferLike> | Uint8Array<ArrayBufferLike>
+  raw: string
 }
 
 export class ZodResultError extends ResultError {
@@ -18,11 +18,15 @@ export class ZodResultError extends ResultError {
     super(name, report)
     this.report = report
   }
+
+  override toString = () => {
+    return `${this.report.name}: ${this.report.message}\n\`\`\`\n${this.report.raw}\n\`\`\``
+  }
 }
 
 export class DifyEmptyMsg extends Error { }
 
-const zodFormatHandler = (err: unknown, payload: string, raw: string | Buffer<ArrayBufferLike> | Uint8Array<ArrayBufferLike>)
+const zodFormatHandler = (err: unknown, payload: string, raw: string)
   : ZodFormatErrorReport => {
   if (err instanceof SyntaxError) {
     return { name: "JSON_SYNTAX_ERROR", message: payload, raw }
@@ -136,7 +140,7 @@ const csvParserGenerator = <
   } catch (err) {
     return {
       status: "Failure",
-      errorReport: zodFormatHandler(err, payload, csv)
+      errorReport: zodFormatHandler(err, payload, csv.toString())
     }
   }
 }

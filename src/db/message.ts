@@ -36,8 +36,8 @@ class MessageDBImpl extends CoreDB<RawMessageDB> {
         .addColumn("display_name", "text", (col) => col.notNull())
         .addColumn("avatar_url", "text")
         .execute()
-    } catch (_) {
-      dbError("initializing translation db")
+    } catch (err) {
+      return dbError("initializing translation db", err)
     }
   }
 
