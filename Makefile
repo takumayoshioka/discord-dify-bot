@@ -5,19 +5,19 @@ COMPOSE_DEV = compose.dev.yaml
 COMPOSE_PROD = compose.prod.yaml
 
 dev-up:
-	docker compose -f $(COMPOSE) -f $(COMPOSE_DEV) up --build
+	docker compose --env-file .env.dev -f $(COMPOSE) -f $(COMPOSE_DEV) up --build
 
 dev-up-nostart:
-	docker compose -f $(COMPOSE) -f $(COMPOSE_DEV) up --build --no-start
+	docker compose --env-file .env.dev -f $(COMPOSE) -f $(COMPOSE_DEV) up --build --no-start
 
 dev-down:
-	docker compose -f $(COMPOSE) -f $(COMPOSE_DEV) down --timeout 30
+	docker compose --env-file .env.dev -f $(COMPOSE) -f $(COMPOSE_DEV) down --timeout 30
 
 prod-up:
-	docker compose -f $(COMPOSE) -f $(COMPOSE_PROD) up -d --build
+	docker compose --env-file .env -f $(COMPOSE) -f $(COMPOSE_PROD) up -d --build
 
 prod-down:
-	docker compose -f $(COMPOSE) -f $(COMPOSE_PROD) down --timeout 30
+	docker compose --env-file .env -f $(COMPOSE) -f $(COMPOSE_PROD) down --timeout 30
 
 clear-db:
 	rm -r db/*

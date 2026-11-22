@@ -1,8 +1,10 @@
 import { Kysely, type Generated, type Insertable } from "kysely"
+import { join, dirname } from "node:path"
 import { readFile } from "node:fs/promises"
 
 import { type DB, CoreDB, dbError, openDB } from "#src/db/common"
-import { glossaryCSVPath, updateSheetCSV } from "#src/util/spreadSheet"
+import { env } from "#src/env"
+import { updateSheetCSV } from "#src/util/spreadSheet"
 import { parseGlossaryCSV, ZodResultError } from "#src/util/zodFormat"
 
 export class GlossaryRemoveFailure extends Error { }
@@ -10,6 +12,9 @@ export class GlossaryRemoveFailure extends Error { }
 const GLOSSARY_DB_TABLE = "glossary_table"
 const SINGLE_GLOSSARY_DB_TABLE = "single_glossary_table"
 const ENGLISH_KEYWORDS_DB_TABLE = "english_keywords_table"
+
+let glossaryCSVPath: string
+const credentialPath = env.GOOGLE_CREDENTIAL
 
 export type CoreGlossaryRow = {
   ja: string,
@@ -85,6 +90,7 @@ const initGlossaryTable = (
 
 class GlossaryDBImple extends CoreDB<RawGlossaryDB> {
   static open = async (path: string) => {
+    glossaryCSVPath = join(dirname(path), "Glossary.csv")
     return new GlossaryDBImple(await openDB(path), GLOSSARY_DB_TABLE)
   }
 
@@ -109,7 +115,7 @@ class GlossaryDBImple extends CoreDB<RawGlossaryDB> {
   }
 
   readCSV = async () => {
-    await updateSheetCSV()
+    await updateSheetCSV(glossaryCSVPath, credentialPath)
 
     const parsedCSV = parseGlossaryCSV(await readFile(glossaryCSVPath))
 

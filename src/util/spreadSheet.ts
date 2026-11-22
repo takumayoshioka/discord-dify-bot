@@ -1,4 +1,3 @@
-import { join } from "node:path"
 import { readFile, rename, rm, writeFile } from "node:fs/promises"
 import { randomUUIDv7 } from "node:crypto"
 
@@ -9,10 +8,7 @@ import { env } from "#src/env"
 import { glossaryColumnLength, parseGoogleCredential } from "#src/util/zodFormat"
 import { type Result, type ErrorReport } from "#src/util/result"
 
-export const glossaryCSVPath = join(process.cwd(), "Glossary.csv")
-const credentialPath = join(process.cwd(), env.GOOGLE_CREDENTIAL)
-
-export const updateSheetCSV = async (): Promise<Result<"", ErrorReport>> => {
+export const updateSheetCSV = async (glossaryCSVPath: string, credentialPath: string): Promise<Result<"", ErrorReport>> => {
   const parsedCredential = parseGoogleCredential(
     await readFile(credentialPath, "utf-8")
   )

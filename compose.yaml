@@ -7,3 +7,11 @@ services:
     container_name: discord-translator
     volumes:
       - ./db:/app/db
+    environment:
+      GOOGLE_CREDENTIAL: /run/secrets/google_credential
+    secrets:
+      - google_credential
+
+secrets:
+  google_credential:
+    file: ${GOOGLE_CREDENTIAL}
