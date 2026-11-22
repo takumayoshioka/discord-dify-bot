@@ -16,9 +16,9 @@ import {
 } from "discord.js"
 
 import {
-  JsonResultError,
+  ZodResultError,
   parseAttachmentFiles
-} from "#src/util/jsonFormat"
+} from "#src/util/zodFormat"
 import {
   difyRequest,
   type DifyKind,
@@ -168,7 +168,7 @@ class MessageSender {
 
       case ("Failure"): {
         await messageDB.dequeue(row.id)
-        throw new JsonResultError("Parsing Json Attachment", files.errorReport)
+        throw new ZodResultError("Parsing Json Attachment", files.errorReport)
       }
     }
   }

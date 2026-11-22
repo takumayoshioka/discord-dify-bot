@@ -3,8 +3,8 @@ import {
   createRequest,
   parseErrorResponse,
   parseResponse,
-  type JsonFormatErrorReport,
-} from "#src/util/jsonFormat"
+  type ZodFormatErrorReport,
+} from "#src/util/zodFormat"
 import type { Result } from "#src/util/result"
 
 export type DIFY_ERROR_NAME = "RETRY" | "TIMEOUT" | "HTTP_ERROR"
@@ -15,7 +15,7 @@ export type DifyErrorReport = {
   name: DIFY_ERROR_NAME,
   message: string,
   raw: string | undefined
-} | JsonFormatErrorReport
+} | ZodFormatErrorReport
 
 export type DifyKind = "translation" | "dajare"
 

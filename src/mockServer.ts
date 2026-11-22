@@ -5,7 +5,7 @@ import {
   createResponse,
   getRequest,
   parseRequest
-} from "#src/util/jsonFormat"
+} from "#src/util/zodFormat"
 import { getWorkflowURL } from "#src/util/difyURL"
 import { unwrap } from "#src/util/result"
 import { detachVoidPromise } from "#src/util/utilities"

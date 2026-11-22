@@ -8,7 +8,7 @@ import { ResultError, type ErrorReport } from "#src/util/result"
 import { errorDB } from "#src/db/manager"
 import { botErrorCommandsInteraction, commands } from "#src/util/commands"
 import { DBError } from "#src/db/common"
-import { DifyEmptyMsg, JsonResultError } from "#src/util/jsonFormat"
+import { DifyEmptyMsg, ZodResultError } from "#src/util/zodFormat"
 import { detachVoidPromise, sleep } from "#src/util/utilities"
 import { difyRequest, type DifyKind } from "#src/util/difyURL"
 
@@ -191,7 +191,7 @@ export abstract class CoreBot<T extends ErrorReport> {
             await this.portErrorReport(
               `DB Error comes from ${err.from}:\n\`\`\`\n${err}\n\`\`\``
             )
-          } else if (err instanceof JsonResultError) {
+          } else if (err instanceof ZodResultError) {
             await this.portErrorReport(
               `${err.report.name}: ${err.report.message}\n\`\`\`\n${err.report.raw}\n\`\`\``
             )

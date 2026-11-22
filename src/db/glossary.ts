@@ -1,7 +1,10 @@
-import { type DB, CoreDB, dbError, openDB } from "#src/db/common"
-import { /* type Selectable, sql, */ Kysely, type Generated, type Insertable } from "kysely"
-import { parse } from "csv-parse/sync"
+import { Kysely, type Generated, type Insertable } from "kysely"
 import { readFile } from "node:fs/promises"
+
+import { type DB, CoreDB, dbError, openDB } from "#src/db/common"
+import { glossaryCSVPath, updateSheetCSV } from "#src/util/spreadSheet"
+import { parseGlossaryCSV, ZodResultError } from "#src/util/zodFormat"
+import { ResultError } from "#src/util/result"
 
 export class GlossaryRemoveFailure extends Error { }
 
@@ -26,11 +29,6 @@ type OriginalGlossaryDB = {
 const searchPrefixes = [
   "ja_prefix", "hiragana_prefix", "katakana_prefix", "ja_abb_prefix"
 ] as const
-
-type CSVHeader = Record<
-  "日本語" | "英語" | "読み（ひらがな）" | "読み（かたかな）" | "日本語（略称）" | "英語（略称）",
-  string
->
 
 type GlossaryRow = OriginalGlossaryDB & {
   [K in typeof searchPrefixes[number]]: string | null
@@ -106,16 +104,30 @@ class GlossaryDBImple extends CoreDB<RawGlossaryDB> {
 
       await this.readCSV()
       await this.createIndex()
-    } catch (_) {
+    } catch (e) {
+      if (e instanceof ResultError) {
+        throw e
+      }
       return dbError(`initializing glossary db`)
     }
   }
 
   readCSV = async () => {
-    const csvRows = parse<Record<string, string>>(
-      await readFile("Glossary.csv"),
-      { columns: true, bom: true, skip_empty_lines: true }
-    ) as CSVHeader[]
+    await updateSheetCSV()
+
+    const parsedCSV = parseGlossaryCSV(await readFile(glossaryCSVPath))
+
+    let csvRows
+    switch (parsedCSV.status) {
+      case "Success": {
+        csvRows = parsedCSV.result
+        break
+      }
+
+      case "Failure": {
+        throw new ZodResultError("Read Glossary CSV", parsedCSV.errorReport)
+      }
+    }
 
     const { dbSingleRows, dbRows, dbEnKeyRows } = csvRows.reduce(({ dbSingleRows, dbRows, dbEnKeyRows }, row, i) => {
       const ja = row["日本語"]
