@@ -77,7 +77,8 @@ const interactionSet = async (
     if (err instanceof DajareSetFailure) {
       await interaction.editReply("Set failure.")
     } else {
-      botError("set-dajare-ch command")
+      await interaction.editReply("Failure.")
+      return botError("set-dajare-ch command", err)
     }
   }
 }
@@ -97,7 +98,8 @@ const interactionDisconnect = async (
     if (err instanceof DajareRemoveFailure) {
       await interaction.editReply("Removal failure.")
     } else {
-      botError("remove-dajare-ch command")
+      await interaction.editReply("Failure.")
+      return botError("remove-dajare-ch command", err)
     }
   }
 }
@@ -121,8 +123,13 @@ const interactionResetChDB = async (
   interaction: ChatInputCommandInteraction
 ) => {
   await interaction.deferReply()
-  await dajareDB.reset()
-  await interaction.editReply("Channel DB cleared")
+  try {
+    await dajareDB.reset()
+    await interaction.editReply("Channel DB cleared")
+  } catch (err) {
+    await interaction.editReply("Failure.")
+    return botError("reset-dajare-ch command", err)
+  }
 }
 
 // slash command interaction

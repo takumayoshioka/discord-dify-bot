@@ -4,24 +4,34 @@ import {
   type Client,
   type SlashCommandOptionsOnlyBuilder
 } from "discord.js"
-import { ResultError, type ErrorReport } from "#src/util/result"
+import { type ErrorReport } from "#src/util/result"
 import { errorDB } from "#src/db/manager"
 import { botErrorCommandsInteraction, commands } from "#src/util/commands"
-import { DBError } from "#src/db/common"
-import { DifyEmptyMsg, JsonResultError } from "#src/util/jsonFormat"
-import { detachVoidPromise, sleep } from "#src/util/utilities"
+import { DifyEmptyMsg } from "#src/util/zodFormat"
+import { detachVoidPromise, InternalError, sleep } from "#src/util/utilities"
 import { difyRequest, type DifyKind } from "#src/util/difyURL"
 
-class BotError extends Error {
+class BotError extends InternalError {
   from: string
-  constructor(name: string, from: string) {
+  constructor(name: string, from: string, cause?: Error) {
     super(name)
     this.from = from
+    this.cause = cause
+  }
+
+  override toString = () => {
+    const errMsg = (this.cause && this.cause instanceof Error)
+      ? `:\n\`\`\n${this.cause?.toString()}\n\`\`\`` : ""
+    return `Bot Error comes from ${this.from}${errMsg}`
   }
 }
 
-export const botError = (from: string) => {
-  throw new BotError("Internal Bot Error", from)
+export const botError = (from: string, err: unknown) => {
+  throw new BotError(
+    "Internal Bot Error",
+    from,
+    (err instanceof Error) ? err : undefined
+  )
 }
 
 type ErrorReporter<T extends ErrorReport> =
@@ -183,22 +193,8 @@ export abstract class CoreBot<T extends ErrorReport> {
         try {
           await f(...args)
         } catch (err) {
-          if (err instanceof BotError) {
-            await this.portErrorReport(
-              `Bot Error comes from ${err.from}:\n\`\`\`\n${err}\n\`\`\``
-            )
-          } else if (err instanceof DBError) {
-            await this.portErrorReport(
-              `DB Error comes from ${err.from}:\n\`\`\`\n${err}\n\`\`\``
-            )
-          } else if (err instanceof JsonResultError) {
-            await this.portErrorReport(
-              `${err.report.name}: ${err.report.message}\n\`\`\`\n${err.report.raw}\n\`\`\``
-            )
-          } else if (err instanceof ResultError) {
-            await this.portErrorReport(
-              `${err.report.name}: ${err.report.message}`
-            )
+          if (err instanceof InternalError) {
+            await this.portErrorReport(err.toString())
           } else if (err instanceof DifyEmptyMsg) {
             return
           } else {

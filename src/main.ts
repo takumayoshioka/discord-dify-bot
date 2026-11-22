@@ -12,7 +12,8 @@ import {
   connectDB,
   dajareDB,
   errorDB,
-  messageDB
+  messageDB,
+  glossaryDB
 } from "#src/db/manager"
 import { botSetup } from "#src/util/bot"
 
@@ -20,6 +21,7 @@ await connectDB.init()
 await dajareDB.init()
 await messageDB.init()
 await errorDB.init()
+await glossaryDB.init()
 
 const translationClient: Client = new Client({
   intents: [

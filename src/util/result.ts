@@ -1,10 +1,16 @@
+import { InternalError } from "#src/util/utilities"
+
 const UNWRAP_ERROR = "Unwrapping Failure"
 
-export class ResultError extends Error {
+export class ResultError extends InternalError {
   report: ErrorReport
   constructor(name: string, report: ErrorReport) {
     super(name)
     this.report = report
+  }
+
+  override toString = () => {
+    return `${this.report.name}: ${this.report.message}`
   }
 }
 

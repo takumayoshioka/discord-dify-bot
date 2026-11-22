@@ -1,4 +1,4 @@
-FROM node:24.18.0-bookworm-slim AS build
+FROM node:24.22.3-bookworm-slim AS build
 
 WORKDIR /app
 
@@ -14,7 +14,7 @@ COPY src ./src
 RUN npm run compile:docker
 
 
-FROM node:24.18.0-bookworm-slim AS production-deps
+FROM node:24.22.3-bookworm-slim AS production-deps
 
 WORKDIR /app
 
@@ -26,7 +26,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
 
-FROM node:24.18.0-bookworm-slim AS production
+FROM node:24.22.3-bookworm-slim AS production
 
 WORKDIR /app
 

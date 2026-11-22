@@ -12,7 +12,8 @@ import {
   connectDB,
   messageDB,
   ChannelConnectionFailure,
-  ChannelDisconnectionFailure
+  ChannelDisconnectionFailure,
+  glossaryDB
 } from "#src/db/manager"
 import { botError } from "#src/util/bot"
 
@@ -22,6 +23,8 @@ const SHOW_TARGET_COMMAND_NAME = "show-target"
 const SHOW_ALL_COMMAND_NAME = "show-all"
 const RESET_CHANNEL_DB_COMMAND_NAME = "reset-ch"
 const RESET_MESSAGE_DB_COMMAND_NAME = "reset-msg"
+const UPDATE_GLOSSARY_COMMAND_NAME = "update-glossary"
+
 const CONNECT_DISCONNECT_OPTION = { ja: "ja", en: "en" }
 const SHOW_TARGET_OPTION = "ch"
 
@@ -93,6 +96,10 @@ const translateMessageCommand = new ContextMenuCommandBuilder()
   .setName("translate")
   .setType(ApplicationCommandType.Message)
 
+const updateGlossaryCommand = new SlashCommandBuilder()
+  .setName(UPDATE_GLOSSARY_COMMAND_NAME)
+  .setDescription("Update glossary")
+
 export const commands = [
   translateMessageCommand,
   connectCommand,
@@ -100,7 +107,8 @@ export const commands = [
   showTargetCommand,
   showAllCommand,
   resetChDBCommand,
-  resetMsgDBCommand
+  resetMsgDBCommand,
+  updateGlossaryCommand
 ]
 
 const interactionConnect = async (
@@ -123,7 +131,8 @@ const interactionConnect = async (
     if (err instanceof ChannelConnectionFailure) {
       await interaction.editReply("Connection failure.")
     } else {
-      botError("connect command")
+      await interaction.editReply("Failure.")
+      return botError("connect command", err)
     }
   }
 }
@@ -148,7 +157,8 @@ const interactionDisconnect = async (
     if (err instanceof ChannelDisconnectionFailure) {
       await interaction.editReply("Disconnection failure.")
     } else {
-      botError("disconnect command")
+      await interaction.editReply("Failure.")
+      return botError("disconnect command", err)
     }
   }
 }
@@ -169,8 +179,9 @@ const interactionShowTarget = async (
     }
 
     await interaction.editReply(`Target channel is <#${dstChannel.channelID}>`)
-  } catch (_) {
-    botError("show-target command")
+  } catch (err) {
+    await interaction.editReply("Failure.")
+    return botError("show-target command", err)
   }
 }
 
@@ -195,16 +206,39 @@ const interactionResetChDB = async (
   interaction: ChatInputCommandInteraction
 ) => {
   await interaction.deferReply()
-  await connectDB.reset()
-  await interaction.editReply("Channel DB cleared")
+  try {
+    await connectDB.reset()
+    await interaction.editReply("Channel DB cleared")
+  } catch (err) {
+    await interaction.editReply("Failure.")
+    return botError("reset-ch command", err)
+  }
 }
 
 const interactionResetMsgDB = async (
   interaction: ChatInputCommandInteraction
 ) => {
   await interaction.deferReply()
-  await messageDB.reset()
-  await interaction.editReply("Message DB cleared")
+  try {
+    await messageDB.reset()
+    await interaction.editReply("Message DB cleared")
+  } catch (err) {
+    await interaction.editReply("Failure.")
+    return botError("reset-msg command", err)
+  }
+}
+
+const interactionUpdateGlossary = async (
+  interaction: ChatInputCommandInteraction
+) => {
+  await interaction.deferReply()
+  try {
+    await glossaryDB.readCSV()
+    await interaction.editReply("Glossary updated.")
+  } catch (err) {
+    await interaction.editReply("Failure.")
+    return botError("update-glossary command", err)
+  }
 }
 
 // slash command interaction
@@ -242,6 +276,11 @@ export const botConnectionCommandsInteraction = async (
 
     case RESET_MESSAGE_DB_COMMAND_NAME: {
       await interactionResetMsgDB(interaction)
+      break
+    }
+
+    case UPDATE_GLOSSARY_COMMAND_NAME: {
+      await interactionUpdateGlossary(interaction)
       break
     }
 

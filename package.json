@@ -1,26 +1,29 @@
 {
   "type": "module",
   "dependencies": {
-    "better-sqlite3": "^13.0.3",
-    "discord.js": "^14.27.0",
-    "dotenv": "^17.4.2",
-    "kysely": "^0.29.7",
+    "better-sqlite3": "^13.2.0",
+    "csv-parse": "^7.0.3",
+    "csv-stringify": "^6.9.0",
+    "discord.js": "^14.28.1",
+    "dotenv": "^18.0.10",
+    "googleapis": "^190.0.0",
+    "kysely": "^0.29.9",
     "zod": "^4.6.7"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/better-sqlite3": "^7.6.13",
-    "@types/node": "^26.6.5",
-    "eslint": "^10.13.0",
-    "globals": "^17.13.0",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "^26.6.6",
+    "eslint": "^10.15.0",
+    "globals": "^17.14.0",
     "jiti": "^2.7.0",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.72.0",
-    "vitest": "^4.1.12"
+    "typescript-eslint": "^8.73.0",
+    "vitest": "^5.1.1"
   },
   "allowScripts": {
-    "better-sqlite3@13.0.3": true
+    "better-sqlite3@13.2.0": true
   },
   "imports": {
     "#src/*": {

@@ -16,9 +16,9 @@ import {
 } from "discord.js"
 
 import {
-  JsonResultError,
+  ZodResultError,
   parseAttachmentFiles
-} from "#src/util/jsonFormat"
+} from "#src/util/zodFormat"
 import {
   difyRequest,
   type DifyKind,
@@ -27,7 +27,9 @@ import {
 import {
   connectDB,
   messageDB,
-  type TranslationDirection
+  glossaryDB,
+  type TranslationDirection,
+  type CoreGlossaryRow
 } from "#src/db/manager"
 import { CoreBot } from "#src/util/bot"
 import { botConnectionCommandsInteraction, commands } from "./commands.js"
@@ -49,9 +51,60 @@ const getAdditionalPrompt = (dir: TranslationDirection) => {
   })() + "\n翻訳するテキストは以下の通りです。\n"
 }
 
+const getAdditionalGlossaryRows = async (
+  message: string, dir: TranslationDirection
+) => {
+  switch (dir) {
+    case "ja-to-en": {
+      const chars = Array.from(message)
+      const singleCharSet = new Set<CoreGlossaryRow>
+      const prefixes = await Promise.all(chars.slice(1).map(async (char, i) => {
+        (await glossaryDB.searchBySingleChar(chars[i]!))
+          .forEach((row) => singleCharSet.add(row))
+        return chars[i]! + char
+      }))
+
+      if (prefixes.length === 0 && singleCharSet.size === 0) { return [] }
+
+      return [...singleCharSet, ...(await glossaryDB.searchByTwoCharPrefixes(prefixes))]
+    }
+
+    case "en-to-ja": {
+      const words = message.toLowerCase().split(/\s+/)
+      if (words.length === 0) { return [] }
+
+      return await glossaryDB.searchByWord(words)
+    }
+  }
+}
+
+const getAdditionalGlossary = async (
+  message: string, dir: TranslationDirection
+) => {
+  const selectedRows = await getAdditionalGlossaryRows(message, dir)
+
+  if (selectedRows.length === 0) { return "" }
+
+  return "\n\n【翻訳に使用する用語集】\n"
+    + selectedRows.map(
+      ({ ja, en, hiragana, katakana, ja_abb, en_abb }) => {
+        const additionalJa = [hiragana, katakana, ja_abb].filter((s) => s).join(",")
+        const wordJa = (additionalJa.length === 0)
+          ? ja : `${ja}（${additionalJa}）`
+
+        const wordEn = (en_abb) ? `${en} (${en_abb})` : en
+
+        return `${wordJa}, ${wordEn}`
+      }
+    ).join("\n")
+}
+
 const translate = async (message: string, dir: TranslationDirection) => {
   return await difyRequest(
-    "translation", getAdditionalPrompt(dir) + message
+    "translation",
+    getAdditionalPrompt(dir)
+    + message
+    + await getAdditionalGlossary(message, dir)
   )
 }
 
@@ -115,7 +168,7 @@ class MessageSender {
 
       case ("Failure"): {
         await messageDB.dequeue(row.id)
-        throw new JsonResultError("Parsing Json Attachment", files.errorReport)
+        throw new ZodResultError("Parsing Json Attachment", files.errorReport)
       }
     }
   }

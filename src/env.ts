@@ -13,6 +13,10 @@ const envSchema = z.object({
   BASE_URL: z.url().transform((s) => s.replace(/\$/, "")),
   DIFY_API_KEY_TRANS: z.string().min(1).optional(),
   DIFY_API_KEY_DAJARE: z.string().min(1).optional(),
+
+  GOOGLE_CREDENTIAL: z.string().min(1),
+  GLOSSARY_SHEET_ID: z.string().min(1),
+  GLOSSARY_SHEET_RANGE: z.string().min(1),
 }).superRefine((v, ctx) => {
   if (v.APP_ENV === "production" && !v.DIFY_API_KEY_TRANS) {
     ctx.addIssue({

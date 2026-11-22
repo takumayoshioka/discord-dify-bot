@@ -1,6 +1,14 @@
 # database
 db/*
 
+# json
+**/*.json
+!.vscode/launch.json
+!credential_example.json
+
+# csv
+**/*.csv
+
 # build
 /build
 
